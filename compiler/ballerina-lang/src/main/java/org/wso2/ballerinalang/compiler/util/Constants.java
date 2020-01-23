@@ -27,6 +27,7 @@ package org.wso2.ballerinalang.compiler.util;
 public class Constants {
 
     private Constants() {
+
     }
 
     public static final int OPEN_SEALED_ARRAY_INDICATOR = -2;
@@ -40,4 +41,5 @@ public class Constants {
 
     public static final int INIT_METHOD_SPLIT_SIZE = 50;
 
+    public static final String UNICODE_REGEX = "\\\\u[{]([a-fA-F0-9]*)[}]";
 }

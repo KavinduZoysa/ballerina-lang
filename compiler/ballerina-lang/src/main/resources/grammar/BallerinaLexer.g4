@@ -387,7 +387,7 @@ EscapeSequence
 
 fragment
 UnicodeEscape
-    :   '\\' 'u' HexDigit HexDigit HexDigit HexDigit
+    :   '\\' 'u' LEFT_BRACE HexDigit+ RIGHT_BRACE
     ;
 
 // Blob Literal
