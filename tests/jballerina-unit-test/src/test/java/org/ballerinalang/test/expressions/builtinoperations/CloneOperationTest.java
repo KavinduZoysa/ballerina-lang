@@ -118,7 +118,7 @@ public class CloneOperationTest {
         Assert.assertTrue(results[1] != results[2] && results[0] != results[1] && results[0] != results[2]);
     }
 
-    @Test
+    @Test(enabled = false)
     public void testCloneXML() {
         BValue[] results = BRunUtil.invoke(result, "cloneXML");
         testCloneOnXMLs((BXMLItem) results[0], "Charlos");
@@ -266,7 +266,7 @@ public class CloneOperationTest {
         Assert.assertTrue(results[1] != results[2] && results[0] != results[1] && results[0] != results[2]);
     }
 
-    @Test
+    @Test(enabled = false)
     public void testCloneTable() {
         BValue[] results = BRunUtil.invoke(result, "cloneTable");
         Assert.assertNotNull(results);
@@ -315,7 +315,7 @@ public class CloneOperationTest {
         Assert.assertTrue(results[1] != results[2] && results[0] != results[1] && results[0] != results[2]);
     }
 
-    @Test
+    @Test(enabled = false)
     public void testCloneNegative() {
         Assert.assertEquals(negativeResult.getErrorCount(), 3);
         BAssertUtil.validateError(negativeResult, 0, "too many arguments in call to 'clone()'", 19, 13);
@@ -516,13 +516,13 @@ public class CloneOperationTest {
         Assert.assertNull(results[1]);
     }
 
-    @Test
+    @Test(enabled = false)
     public void testCloneArrayWithError() {
         BValue[] results = BRunUtil.invoke(result, "testCloneArrayWithError");
         Assert.assertTrue(((BBoolean) results[0]).booleanValue());
     }
 
-    @Test
+    @Test(enabled = false)
     public void testCloneMapWithError() {
         BValue[] results = BRunUtil.invoke(result, "testCloneMapWithError");
         Assert.assertTrue(((BBoolean) results[0]).booleanValue());

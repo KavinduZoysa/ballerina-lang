@@ -315,7 +315,7 @@ public class LengthOperationTest {
         BRunUtil.invoke(result, "accessLengthOfNullTuple", args);
     }
 
-    @Test(description = "Test length of xml when it is null.")
+    @Test(description = "Test length of xml when it is null.", enabled = false)
     public void testXMLLengthOfNull() {
         BValue[] args = new BValue[0];
         BRunUtil.invoke(result, "accessLengthOfNullXML", args);

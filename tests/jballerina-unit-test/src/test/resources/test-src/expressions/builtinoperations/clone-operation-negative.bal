@@ -19,10 +19,10 @@ public function cloneWithParams() {
     int x = a.clone(true);
 }
 
-public function cloneInvalidType() {
-    typedesc<int> a = int;
-    typedesc<int> x = a.clone();
-}
+// public function cloneInvalidType() {
+//     typedesc<int> a = int;
+//     typedesc<int> x = a.clone();
+// }
 
 public function cloneError() returns error {
     error a = error("Test");
