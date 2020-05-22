@@ -56,6 +56,7 @@ import io.ballerinalang.compiler.syntax.tree.InterpolationNode;
 import io.ballerinalang.compiler.syntax.tree.KeySpecifierNode;
 import io.ballerinalang.compiler.syntax.tree.KeyTypeConstraintNode;
 import io.ballerinalang.compiler.syntax.tree.ListConstructorExpressionNode;
+import io.ballerinalang.compiler.syntax.tree.ListenerDeclarationNode;
 import io.ballerinalang.compiler.syntax.tree.MappingConstructorExpressionNode;
 import io.ballerinalang.compiler.syntax.tree.MappingFieldNode;
 import io.ballerinalang.compiler.syntax.tree.MethodCallExpressionNode;
@@ -531,6 +532,8 @@ public class BLangNodeTransformer extends NodeTransformer<BLangNode> {
                 }
             } else if (bLangNode.getKind() == NodeKind.VARIABLE) {
                 objectTypeNode.addField((BLangSimpleVariable) bLangNode);
+            } else if (bLangNode.getKind() == NodeKind.USER_DEFINED_TYPE) {
+                objectTypeNode.addTypeReference((BLangType) bLangNode);
             }
         }
 
@@ -1354,6 +1357,16 @@ public class BLangNodeTransformer extends NodeTransformer<BLangNode> {
         bLExpressionStmt.expr = (BLangExpression) expressionStatement.expression().apply(this);
         bLExpressionStmt.pos = getPosition(expressionStatement);
         return bLExpressionStmt;
+    }
+
+    @Override
+    public BLangNode transform(ListenerDeclarationNode listenerDeclarationNode) {
+        return new SimpleVarBuilder()
+                .with(listenerDeclarationNode.variableName().text())
+                .setTypeByNode(listenerDeclarationNode.typeDescriptor())
+                .setExpressionByNode(listenerDeclarationNode.initializer())
+                .isListenerVar()
+                .build();
     }
 
     // -------------------------------------------------Misc------------------------------------------------------------
