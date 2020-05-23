@@ -530,6 +530,7 @@ public class BLangNodeTransformer extends NodeTransformer<BLangNode> {
                 } else {
                     objectTypeNode.addFunction(bLangFunction);
                 }
+                bLangFunction.flagSet.add(Flag.ATTACHED);
             } else if (bLangNode.getKind() == NodeKind.VARIABLE) {
                 objectTypeNode.addField((BLangSimpleVariable) bLangNode);
             } else if (bLangNode.getKind() == NodeKind.USER_DEFINED_TYPE) {
