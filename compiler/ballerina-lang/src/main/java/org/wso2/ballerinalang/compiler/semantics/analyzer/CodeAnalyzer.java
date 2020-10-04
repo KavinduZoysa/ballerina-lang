@@ -160,6 +160,7 @@ import org.wso2.ballerinalang.compiler.tree.expressions.BLangXMLQName;
 import org.wso2.ballerinalang.compiler.tree.expressions.BLangXMLQuotedString;
 import org.wso2.ballerinalang.compiler.tree.expressions.BLangXMLTextLiteral;
 import org.wso2.ballerinalang.compiler.tree.matchpatterns.BLangConstPattern;
+import org.wso2.ballerinalang.compiler.tree.matchpatterns.BLangErrorMatchPattern;
 import org.wso2.ballerinalang.compiler.tree.matchpatterns.BLangListMatchPattern;
 import org.wso2.ballerinalang.compiler.tree.matchpatterns.BLangMatchPattern;
 import org.wso2.ballerinalang.compiler.tree.matchpatterns.BLangVarBindingPatternMatchPattern;
@@ -1060,6 +1061,9 @@ public class CodeAnalyzer extends BLangNodeVisitor {
     public void visit(BLangCaptureBindingPattern captureBindingPattern) {
         this.hasLastPatternInClause = true;
     }
+
+    @Override
+    public void visit(BLangErrorMatchPattern errorMatchPattern) {}
 
     @Override
     public void visit(BLangMatch matchStmt) {
