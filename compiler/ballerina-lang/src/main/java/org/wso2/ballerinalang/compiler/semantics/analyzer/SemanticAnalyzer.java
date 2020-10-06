@@ -2394,7 +2394,6 @@ public class SemanticAnalyzer extends BLangNodeVisitor {
 
     @Override
     public void visit(BLangErrorMatchPattern errorMatchPattern) {
-
         if (errorMatchPattern.errorTypeReference != null) {
             errorMatchPattern.type = symResolver.resolveTypeNode(errorMatchPattern.errorTypeReference, env);
         } else {
@@ -2421,7 +2420,6 @@ public class SemanticAnalyzer extends BLangNodeVisitor {
 
     @Override
     public void visit(BLangSimpleMatchPattern simpleMatchPattern) {
-
         if (simpleMatchPattern.wildCardMatchPattern != null) {
             analyzeNode(simpleMatchPattern.wildCardMatchPattern, env);
             return;
@@ -2437,14 +2435,12 @@ public class SemanticAnalyzer extends BLangNodeVisitor {
 
     @Override
     public void visit(BLangErrorMessageMatchPattern errorMessageMatchPattern) {
-
         BLangSimpleMatchPattern simpleMatchPattern = errorMessageMatchPattern.simpleMatchPattern;
         analyzeNode(simpleMatchPattern, env);
     }
 
     @Override
     public void visit(BLangErrorCauseMatchPattern errorCauseMatchPattern) {
-
         if (errorCauseMatchPattern.simpleMatchPattern != null) {
             analyzeNode(errorCauseMatchPattern.simpleMatchPattern, env);
             return;
@@ -2456,7 +2452,6 @@ public class SemanticAnalyzer extends BLangNodeVisitor {
 
     @Override
     public void visit(BLangErrorFieldMatchPatterns errorFieldMatchPatterns) {
-
         for (BLangNamedArgMatchPattern namedArgMatchPattern : errorFieldMatchPatterns.namedArgMatchPatterns) {
             analyzeNode(namedArgMatchPattern, env);
         }
@@ -2464,7 +2459,6 @@ public class SemanticAnalyzer extends BLangNodeVisitor {
 
     @Override
     public void visit(BLangNamedArgMatchPattern namedArgMatchPattern) {
-
         analyzeNode(namedArgMatchPattern.matchPattern, env);
     }
 

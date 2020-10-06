@@ -405,7 +405,12 @@
                                         },
                                         {
                                           "kind": "CAPTURE_BINDING_PATTERN",
-                                          "value": "c"
+                                          "children": [
+                                            {
+                                              "kind": "IDENTIFIER_TOKEN",
+                                              "value": "c"
+                                            }
+                                          ]
                                         }
                                       ]
                                     },
