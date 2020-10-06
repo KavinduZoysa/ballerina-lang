@@ -404,7 +404,7 @@
                                           ]
                                         },
                                         {
-                                          "kind": "IDENTIFIER_TOKEN",
+                                          "kind": "CAPTURE_BINDING_PATTERN",
                                           "value": "c"
                                         }
                                       ]
