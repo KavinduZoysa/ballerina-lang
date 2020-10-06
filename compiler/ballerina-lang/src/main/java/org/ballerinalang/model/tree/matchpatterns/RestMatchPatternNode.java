@@ -25,6 +25,7 @@ import org.ballerinalang.model.tree.IdentifierNode;
  * @since Swan Lake
  */
 public interface RestMatchPatternNode {
+
     IdentifierNode getIdentifier();
 
     void setIdentifier(IdentifierNode variableName);
