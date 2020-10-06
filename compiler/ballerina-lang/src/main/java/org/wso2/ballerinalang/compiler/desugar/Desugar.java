@@ -3309,7 +3309,6 @@ public class Desugar extends BLangNodeVisitor {
             currentIfNode.elseStmt = convertMatchClauseToIfStmt(matchClauses.get(i), matchExprVar);
             currentIfNode = (BLangIf) currentIfNode.elseStmt;
         }
-
         return parentIfNode;
     }
 
@@ -3395,9 +3394,7 @@ public class Desugar extends BLangNodeVisitor {
     private BLangExpression createConditionForVarBindingPatternMatchPattern(BLangVarBindingPatternMatchPattern
                                                                                     varBindingPatternMatchPattern,
                                                                             BLangSimpleVarRef matchExprVarRef) {
-
         BLangBindingPattern bindingPattern = varBindingPatternMatchPattern.getBindingPattern();
-
         switch (bindingPattern.getKind()) {
             case CAPTURE_BINDING_PATTERN:
                 BLangCaptureBindingPattern captureBindingPattern = (BLangCaptureBindingPattern) bindingPattern;
@@ -3591,8 +3588,7 @@ public class Desugar extends BLangNodeVisitor {
         BType matchPatternType = errorMatchPattern.type;
         Location pos = errorMatchPattern.pos;
 
-        BLangSimpleVariableDef resultVarDef = createVarDef("errorPatternResult$",
-                symTable.booleanType, null, pos);
+        BLangSimpleVariableDef resultVarDef = createVarDef("errorPatternResult$", symTable.booleanType, null, pos);
         BLangSimpleVarRef resultVarRef = ASTBuilderUtil.createVariableRef(pos, resultVarDef.var.symbol);
         BLangBlockStmt mainBlockStmt = ASTBuilderUtil.createBlockStmt(pos);
         mainBlockStmt.addStatement(resultVarDef);
@@ -3618,35 +3614,28 @@ public class Desugar extends BLangNodeVisitor {
         if (errorMatchPattern.errorMessageMatchPattern != null) {
             Location messagePos = errorMatchPattern.errorMessageMatchPattern.pos;
             BLangInvocation messageInvocation = createLangLibInvocationNode(ERROR_MESSAGE_FUNCTION_NAME,
-                    tempCastVarRef,
-                    new ArrayList<>(), null, messagePos);
+                    tempCastVarRef, new ArrayList<>(), null, messagePos);
             BLangSimpleVariableDef messageVarDef = createVarDef("$errorMessage$", messageInvocation.type,
                     messageInvocation, messagePos);
             ifBlock.addStatement(messageVarDef);
-            BLangSimpleVarRef messageVarRef = ASTBuilderUtil.createVariableRef(messagePos,
-                    messageVarDef.var.symbol);
-            condition =
-                    createConditionForErrorMessageMatchPattern(errorMatchPattern.errorMessageMatchPattern,
+            BLangSimpleVarRef messageVarRef = ASTBuilderUtil.createVariableRef(messagePos, messageVarDef.var.symbol);
+            condition = createConditionForErrorMessageMatchPattern(errorMatchPattern.errorMessageMatchPattern,
                             messageVarRef);
         }
 
         if (errorMatchPattern.errorCauseMatchPattern != null) {
             Location errorCausePos = errorMatchPattern.errorCauseMatchPattern.pos;
-            BLangInvocation causeInvocation = createLangLibInvocationNode(ERROR_CAUSE_FUNCTION_NAME,
-                    tempCastVarRef,
+            BLangInvocation causeInvocation = createLangLibInvocationNode(ERROR_CAUSE_FUNCTION_NAME, tempCastVarRef,
                     new ArrayList<>(), null, errorCausePos);
             BLangSimpleVariableDef causeVarDef = createVarDef("$errorCause$", causeInvocation.type,
                     causeInvocation, errorCausePos);
             ifBlock.addStatement(causeVarDef);
-            BLangSimpleVarRef causeVarRef = ASTBuilderUtil.createVariableRef(errorCausePos,
-                    causeVarDef.var.symbol);
+            BLangSimpleVarRef causeVarRef = ASTBuilderUtil.createVariableRef(errorCausePos, causeVarDef.var.symbol);
             BLangExpression errorCauseCondition =
-                    createConditionForErrorCauseMatchPattern(errorMatchPattern.errorCauseMatchPattern,
-                            causeVarRef);
-            condition = ASTBuilderUtil.createBinaryExpr(pos, condition, errorCauseCondition,
-                    symTable.booleanType, OperatorKind.AND, (BOperatorSymbol) symResolver
-                            .resolveBinaryOperator(OperatorKind.AND, symTable.booleanType,
-                                    symTable.booleanType));
+                    createConditionForErrorCauseMatchPattern(errorMatchPattern.errorCauseMatchPattern, causeVarRef);
+            condition = ASTBuilderUtil.createBinaryExpr(pos, condition, errorCauseCondition, symTable.booleanType,
+                    OperatorKind.AND, (BOperatorSymbol) symResolver.resolveBinaryOperator(OperatorKind.AND,
+                            symTable.booleanType, symTable.booleanType));
         }
 
         if (errorMatchPattern.errorFieldMatchPatterns != null) {
@@ -3664,10 +3653,9 @@ public class Desugar extends BLangNodeVisitor {
                             errorDetailVarRef);
 
             if (condition != null) {
-                condition = ASTBuilderUtil.createBinaryExpr(pos, condition, errorDetailCondition,
-                        symTable.booleanType, OperatorKind.AND, (BOperatorSymbol) symResolver
-                                .resolveBinaryOperator(OperatorKind.AND, symTable.booleanType,
-                                        symTable.booleanType));
+                condition = ASTBuilderUtil.createBinaryExpr(pos, condition, errorDetailCondition, symTable.booleanType,
+                        OperatorKind.AND, (BOperatorSymbol) symResolver.resolveBinaryOperator(OperatorKind.AND,
+                                symTable.booleanType, symTable.booleanType));
             } else {
                 condition = errorDetailCondition;
             }
@@ -3681,7 +3669,6 @@ public class Desugar extends BLangNodeVisitor {
         BLangStatementExpression statementExpression = ASTBuilderUtil.createStatementExpression(mainBlockStmt,
                 resultVarRef);
         statementExpression.type = symTable.booleanType;
-
         return statementExpression;
     }
 
@@ -3709,8 +3696,7 @@ public class Desugar extends BLangNodeVisitor {
             BLangFieldBasedAccess fieldBasedAccessExpr = getFieldAccessExpression(matchPatternPos, argName,
                     symTable.anydataOrReadonly, (BVarSymbol) matchExprVarRef.symbol);
             BLangSimpleVariableDef tempVarDef = createVarDef("$errorFieldVarTemp$" + i + "_$",
-                    symTable.anydataOrReadonly,
-                    fieldBasedAccessExpr, matchPatternPos);
+                    symTable.anydataOrReadonly, fieldBasedAccessExpr, matchPatternPos);
             mainBlockStmt.addStatement(tempVarDef);
             BLangSimpleVarRef tempVarRef = ASTBuilderUtil.createVariableRef(matchPatternPos, tempVarDef.var.symbol);
 
@@ -3722,7 +3708,6 @@ public class Desugar extends BLangNodeVisitor {
             condition = ASTBuilderUtil.createBinaryExpr(matchPatternPos, condition, varCheckCondition,
                     symTable.booleanType, OperatorKind.AND, (BOperatorSymbol) symResolver
                             .resolveBinaryOperator(OperatorKind.AND, symTable.booleanType, symTable.booleanType));
-
         }
 
         BLangBlockStmt tempBLock = ASTBuilderUtil.createBlockStmt(pos);
@@ -3733,7 +3718,6 @@ public class Desugar extends BLangNodeVisitor {
         BLangStatementExpression statementExpression = ASTBuilderUtil.createStatementExpression(mainBlockStmt,
                 resultVarRef);
         statementExpression.type = symTable.booleanType;
-
         return statementExpression;
     }
 
@@ -3759,10 +3743,53 @@ public class Desugar extends BLangNodeVisitor {
                                                                  BLangSimpleVarRef matchExprVarRef) {
         if (simpleMatchPattern.wildCardMatchPattern != null) {
             return createVarCheckCondition(simpleMatchPattern.wildCardMatchPattern, matchExprVarRef);
-        } else if (simpleMatchPattern.constPattern != null) {
+        }
+
+        if (simpleMatchPattern.constPattern != null) {
             return createVarCheckCondition(simpleMatchPattern.constPattern, matchExprVarRef);
         }
+
         return createVarCheckCondition(simpleMatchPattern.varVariableName, matchExprVarRef);
+    }
+
+    private BLangExpression createVarCheckCondition(BLangMatchPattern matchPattern, BLangSimpleVarRef varRef) {
+        NodeKind patternKind = matchPattern.getKind();
+        switch (patternKind) {
+            case WILDCARD_MATCH_PATTERN:
+                return createConditionForWildCardMatchPattern((BLangWildCardMatchPattern) matchPattern, varRef);
+            case CONST_MATCH_PATTERN:
+                return createConditionForConstMatchPattern((BLangConstPattern) matchPattern, varRef);
+            case VAR_BINDING_PATTERN_MATCH_PATTERN:
+                return createConditionForVarBindingPatternMatchPattern(
+                        (BLangVarBindingPatternMatchPattern) matchPattern, varRef);
+            case ERROR_MATCH_PATTERN:
+                return createConditionForErrorMatchPattern((BLangErrorMatchPattern) matchPattern, varRef);
+            default:
+                // If some patterns are not implemented, those should be detected before this phase
+                // TODO : Remove this after all patterns are implemented
+                return null;
+        }
+    }
+
+    private BLangExpression createConditionForMatchPattern(BLangMatchPattern matchPattern,
+                                                           BLangSimpleVarRef matchExprVarRef) {
+        NodeKind patternKind = matchPattern.getKind();
+        switch (patternKind) {
+            case WILDCARD_MATCH_PATTERN:
+                return createConditionForWildCardMatchPattern((BLangWildCardMatchPattern) matchPattern,
+                        matchExprVarRef);
+            case CONST_MATCH_PATTERN:
+                return createConditionForConstMatchPattern((BLangConstPattern) matchPattern, matchExprVarRef);
+            case VAR_BINDING_PATTERN_MATCH_PATTERN:
+                return createConditionForVarBindingPatternMatchPattern(
+                        (BLangVarBindingPatternMatchPattern) matchPattern, matchExprVarRef);
+            case ERROR_MATCH_PATTERN:
+                return createConditionForErrorMatchPattern((BLangErrorMatchPattern) matchPattern, matchExprVarRef);
+            default:
+                // If some patterns are not implemented, those should be detected before this phase
+                // TODO : Remove this after all patterns are implemented
+                return null;
+        }
     }
 
     @Override
