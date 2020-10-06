@@ -318,7 +318,6 @@ public class Types {
 
         BType matchExprType = matchExpr.type;
     public BType resolvePatternTypeFromMatchExpr(BType matchExprType, BType matchPatternType) {
-
         if (isAssignable(matchExprType, matchPatternType)) {
             return matchExprType;
         }

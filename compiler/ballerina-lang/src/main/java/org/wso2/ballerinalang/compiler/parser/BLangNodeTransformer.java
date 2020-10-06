@@ -51,6 +51,7 @@ import io.ballerina.compiler.syntax.tree.EnumDeclarationNode;
 import io.ballerina.compiler.syntax.tree.EnumMemberNode;
 import io.ballerina.compiler.syntax.tree.ErrorBindingPatternNode;
 import io.ballerina.compiler.syntax.tree.ErrorConstructorExpressionNode;
+import io.ballerina.compiler.syntax.tree.ErrorMatchPatternNode;
 import io.ballerina.compiler.syntax.tree.ErrorTypeDescriptorNode;
 import io.ballerina.compiler.syntax.tree.ErrorTypeParamsNode;
 import io.ballerina.compiler.syntax.tree.ExplicitAnonymousFunctionExpressionNode;
@@ -111,7 +112,9 @@ import io.ballerina.compiler.syntax.tree.ModuleMemberDeclarationNode;
 import io.ballerina.compiler.syntax.tree.ModulePartNode;
 import io.ballerina.compiler.syntax.tree.ModuleVariableDeclarationNode;
 import io.ballerina.compiler.syntax.tree.ModuleXMLNamespaceDeclarationNode;
+import io.ballerina.compiler.syntax.tree.NameReferenceNode;
 import io.ballerina.compiler.syntax.tree.NamedArgBindingPatternNode;
+import io.ballerina.compiler.syntax.tree.NamedArgMatchPatternNode;
 import io.ballerina.compiler.syntax.tree.NamedArgumentNode;
 import io.ballerina.compiler.syntax.tree.NamedWorkerDeclarationNode;
 import io.ballerina.compiler.syntax.tree.NamedWorkerDeclarator;
@@ -4069,7 +4072,6 @@ public class BLangNodeTransformer extends NodeTransformer<BLangNode> {
             ErrorMatchPatternNode errorMatchPatternNode = (ErrorMatchPatternNode) matchPattern;
             BLangErrorMatchPattern bLangErrorMatchPattern =
                     (BLangErrorMatchPattern) TreeBuilder.createErrorMatchPattern();
-
             bLangErrorMatchPattern.pos = matchPatternPos;
 
             NameReferenceNode nameReferenceNode;
@@ -4155,7 +4157,6 @@ public class BLangNodeTransformer extends NodeTransformer<BLangNode> {
     }
 
     private BLangErrorMessageMatchPattern createErrorMessageMatchPattern(Node node) {
-
         BLangMatchPattern matchPattern = transformMatchPattern(node);
 
         BLangErrorMessageMatchPattern bLangErrorMessageMatchPattern =
@@ -4166,7 +4167,6 @@ public class BLangNodeTransformer extends NodeTransformer<BLangNode> {
     }
 
     private BLangErrorCauseMatchPattern createErrorCauseMatchPattern(Node node) {
-
         BLangMatchPattern matchPattern = transformMatchPattern(node);
 
         BLangErrorCauseMatchPattern bLangErrorCauseMatchPattern =
@@ -4183,7 +4183,6 @@ public class BLangNodeTransformer extends NodeTransformer<BLangNode> {
 
     private BLangErrorFieldMatchPatterns createErrorFieldMatchPattern(Node errorFieldMatchPatternNode,
                                                          BLangErrorFieldMatchPatterns bLangErrorFieldMatchPatterns) {
-
         BLangMatchPattern matchPattern = transformMatchPattern(errorFieldMatchPatternNode);
         bLangErrorFieldMatchPatterns.pos = getPosition(errorFieldMatchPatternNode);
 
@@ -4199,7 +4198,6 @@ public class BLangNodeTransformer extends NodeTransformer<BLangNode> {
 
     private void createErrorFieldMatchPatterns(int index, ErrorMatchPatternNode errorMatchPatternNode,
                                                BLangErrorMatchPattern bLangErrorMatchPattern) {
-
         BLangErrorFieldMatchPatterns bLangErrorFieldMatchPatterns =
                 (BLangErrorFieldMatchPatterns) TreeBuilder.createErrorFieldMatchPattern();
         for (int i = index; i < errorMatchPatternNode.argListMatchPatternNode().size(); i++) {
@@ -4210,7 +4208,6 @@ public class BLangNodeTransformer extends NodeTransformer<BLangNode> {
     }
 
     private BLangSimpleMatchPattern createSimpleMatchPattern(BLangNode bLangNode) {
-
         BLangSimpleMatchPattern bLangSimpleMatchPattern =
                 (BLangSimpleMatchPattern) TreeBuilder.createSimpleMatchPattern();
 
