@@ -665,6 +665,10 @@ public class IsolationAnalyzer extends BLangNodeVisitor {
     }
 
     @Override
+    public void visit(BLangRestMatchPattern restMatchPattern) {
+    }
+
+    @Override
     public void visit(BLangNamedArgMatchPattern namedArgMatchPattern) {
         analyzeNode(namedArgMatchPattern.argName, env);
         analyzeNode(namedArgMatchPattern.matchPattern, env);

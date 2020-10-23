@@ -113,7 +113,7 @@ import org.ballerinalang.model.tree.matchpatterns.ErrorMatchPatternNode;
 import org.ballerinalang.model.tree.matchpatterns.ErrorMessageMatchPatternNode;
 import org.ballerinalang.model.tree.matchpatterns.ListMatchPatternNode;
 import org.ballerinalang.model.tree.matchpatterns.NamedArgMatchPatternNode;
-import org.ballerinalang.model.tree.matchpatterns.RestMatchPattern;
+import org.ballerinalang.model.tree.matchpatterns.RestMatchPatternNode;
 import org.ballerinalang.model.tree.matchpatterns.SimpleMatchPatternNode;
 import org.ballerinalang.model.tree.matchpatterns.VarBindingPatternMatchPatternNode;
 import org.ballerinalang.model.tree.matchpatterns.WildCardMatchPatternNode;
@@ -784,16 +784,16 @@ public class TreeBuilder {
         return new BLangListMatchPattern();
     }
 
-    public static RestMatchPattern createRestMatchPattern() {
-        return new BLangRestMatchPattern();
-    }
-
     public static MatchClauseNode createMatchClause() {
         return new BLangMatchClause();
     }
 
     public static ExpressionNode createMatchGuard() {
         return new BLangMatchGuard();
+    }
+
+    public static RestMatchPatternNode createRestMatchPattern() {
+        return new BLangRestMatchPattern();
     }
 
     public static CaptureBindingPattern createCaptureBindingPattern() {
