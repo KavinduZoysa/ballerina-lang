@@ -15,14 +15,22 @@
  *  specific language governing permissions and limitations
  *  under the License.
  */
-package org.ballerinalang.model.tree.matchpatterns;
+package org.ballerinalang.model.tree.bindingpattern;
 
 import org.ballerinalang.model.tree.Node;
 
 /**
- * The interface with the APIs to implement the wild-card-match-pattern.
+ * The interface with the APIs to implement the error-cause-binding-pattern.
  *
  * @since 2.0.0
  */
-public interface WildCardMatchPatternNode extends Node {
+public interface ErrorCauseBindingPatternNode extends Node {
+
+    SimpleBindingPatternNode getSimpleBindingPattern();
+
+    void setSimpleBindingPattern(SimpleBindingPatternNode simpleBindingPattern);
+
+    ErrorBindingPatternNode getErrorBindingPatternNode();
+
+    void setErrorBindingPatternNode(ErrorBindingPatternNode errorBindingPatternNode);
 }
