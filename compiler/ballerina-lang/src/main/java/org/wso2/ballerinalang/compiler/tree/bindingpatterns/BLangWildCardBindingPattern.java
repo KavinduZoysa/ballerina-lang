@@ -15,14 +15,26 @@
  *  specific language governing permissions and limitations
  *  under the License.
  */
-package org.ballerinalang.model.tree.matchpatterns;
+package org.wso2.ballerinalang.compiler.tree.bindingpatterns;
 
-import org.ballerinalang.model.tree.Node;
+import org.ballerinalang.model.tree.NodeKind;
+import org.ballerinalang.model.tree.bindingpattern.WildCardBindingPatternNode;
+import org.wso2.ballerinalang.compiler.tree.BLangNodeVisitor;
 
 /**
- * The interface with the APIs to implement the wild-card-match-pattern.
+ * Represent wild-card-binding-pattern.
  *
  * @since 2.0.0
  */
-public interface WildCardMatchPatternNode extends Node {
+public class BLangWildCardBindingPattern extends BLangBindingPattern implements WildCardBindingPatternNode {
+
+    @Override
+    public void accept(BLangNodeVisitor visitor) {
+        visitor.visit(this);
+    }
+
+    @Override
+    public NodeKind getKind() {
+        return NodeKind.WILDCARD_BINDING_PATTERN;
+    }
 }

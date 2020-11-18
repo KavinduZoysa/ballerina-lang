@@ -15,14 +15,23 @@
  *  specific language governing permissions and limitations
  *  under the License.
  */
-package org.ballerinalang.model.tree.matchpatterns;
+package org.ballerinalang.model.tree.bindingpattern;
 
+import org.ballerinalang.model.tree.IdentifierNode;
 import org.ballerinalang.model.tree.Node;
 
 /**
- * The interface with the APIs to implement the wild-card-match-pattern.
+ * The interface with the APIs to implement the named-arg-binding-pattern.
  *
  * @since 2.0.0
  */
-public interface WildCardMatchPatternNode extends Node {
+public interface NamedArgBindingPatternNode extends Node {
+
+    IdentifierNode getIdentifier();
+
+    void setIdentifier(IdentifierNode variableName);
+
+    BindingPatternNode getBindingPattern();
+
+    void setBindingPattern(BindingPatternNode bindingPattern);
 }
