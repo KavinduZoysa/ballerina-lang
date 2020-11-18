@@ -13,7 +13,6 @@
 // KIND, either express or implied.  See the License for the
 // specific language governing permissions and limitations
 // under the License.
-
 package org.ballerinalang.test.statements.matchstmt;
 
 import org.ballerinalang.test.util.BCompileUtil;

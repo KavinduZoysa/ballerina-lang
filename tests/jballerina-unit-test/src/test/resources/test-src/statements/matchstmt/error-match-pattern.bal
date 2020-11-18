@@ -170,6 +170,5 @@ function assertEquals(anydata expected, anydata actual) {
     if expected == actual {
         return;
     }
-
     panic error("expected '" + expected.toString() + "', found '" + actual.toString () + "'");
 }
