@@ -70,7 +70,15 @@ import org.wso2.ballerinalang.compiler.tree.BLangVariable;
 import org.wso2.ballerinalang.compiler.tree.BLangXMLNS;
 import org.wso2.ballerinalang.compiler.tree.bindingpatterns.BLangBindingPattern;
 import org.wso2.ballerinalang.compiler.tree.bindingpatterns.BLangCaptureBindingPattern;
+import org.wso2.ballerinalang.compiler.tree.bindingpatterns.BLangErrorBindingPattern;
+import org.wso2.ballerinalang.compiler.tree.bindingpatterns.BLangErrorCauseBindingPattern;
+import org.wso2.ballerinalang.compiler.tree.bindingpatterns.BLangErrorFieldBindingPatterns;
+import org.wso2.ballerinalang.compiler.tree.bindingpatterns.BLangErrorMessageBindingPattern;
 import org.wso2.ballerinalang.compiler.tree.bindingpatterns.BLangListBindingPattern;
+import org.wso2.ballerinalang.compiler.tree.bindingpatterns.BLangNamedArgBindingPattern;
+import org.wso2.ballerinalang.compiler.tree.bindingpatterns.BLangRestBindingPattern;
+import org.wso2.ballerinalang.compiler.tree.bindingpatterns.BLangSimpleBindingPattern;
+import org.wso2.ballerinalang.compiler.tree.bindingpatterns.BLangWildCardBindingPattern;
 import org.wso2.ballerinalang.compiler.tree.clauses.BLangDoClause;
 import org.wso2.ballerinalang.compiler.tree.clauses.BLangFromClause;
 import org.wso2.ballerinalang.compiler.tree.clauses.BLangJoinClause;
@@ -623,7 +631,53 @@ public class IsolationAnalyzer extends BLangNodeVisitor {
     }
 
     @Override
+    public void visit(BLangRestBindingPattern restBindingPattern) {
+    }
+
+    @Override
+    public void visit(BLangWildCardBindingPattern wildCardBindingPattern) {
+    }
+
+    @Override
     public void visit(BLangCaptureBindingPattern captureBindingPattern) {
+    }
+
+    @Override
+    public void visit(BLangErrorBindingPattern errorBindingPattern) {
+        analyzeNode(errorBindingPattern.errorMessageBindingPattern, env);
+        analyzeNode(errorBindingPattern.errorCauseBindingPattern, env);
+        analyzeNode(errorBindingPattern.errorFieldBindingPatterns, env);
+    }
+
+    @Override
+    public void visit(BLangErrorMessageBindingPattern errorMessageBindingPattern) {
+        analyzeNode(errorMessageBindingPattern.simpleBindingPattern, env);
+    }
+
+    @Override
+    public void visit(BLangSimpleBindingPattern simpleBindingPattern) {
+        analyzeNode(simpleBindingPattern.wildCardBindingPattern, env);
+        analyzeNode(simpleBindingPattern.captureBindingPattern, env);
+    }
+
+    @Override
+    public void visit(BLangErrorCauseBindingPattern errorCauseBindingPattern) {
+        analyzeNode(errorCauseBindingPattern.simpleBindingPattern, env);
+        analyzeNode(errorCauseBindingPattern.errorBindingPattern, env);
+    }
+
+    @Override
+    public void visit(BLangErrorFieldBindingPatterns errorFieldBindingPatterns) {
+        for (BLangNamedArgBindingPattern namedArgBindingPattern : errorFieldBindingPatterns.namedArgBindingPatterns) {
+            analyzeNode(namedArgBindingPattern, env);
+        }
+        analyzeNode(errorFieldBindingPatterns.restBindingPattern, env);
+    }
+
+    @Override
+    public void visit(BLangNamedArgBindingPattern namedArgBindingPattern) {
+        analyzeNode(namedArgBindingPattern.argName, env);
+        analyzeNode(namedArgBindingPattern.bindingPattern, env);
     }
 
     @Override

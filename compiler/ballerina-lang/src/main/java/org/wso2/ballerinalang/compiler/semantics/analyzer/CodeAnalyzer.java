@@ -86,6 +86,7 @@ import org.wso2.ballerinalang.compiler.tree.BLangWorker;
 import org.wso2.ballerinalang.compiler.tree.BLangXMLNS;
 import org.wso2.ballerinalang.compiler.tree.bindingpatterns.BLangBindingPattern;
 import org.wso2.ballerinalang.compiler.tree.bindingpatterns.BLangCaptureBindingPattern;
+import org.wso2.ballerinalang.compiler.tree.bindingpatterns.BLangErrorBindingPattern;
 import org.wso2.ballerinalang.compiler.tree.clauses.BLangDoClause;
 import org.wso2.ballerinalang.compiler.tree.clauses.BLangFromClause;
 import org.wso2.ballerinalang.compiler.tree.clauses.BLangJoinClause;
@@ -1064,6 +1065,9 @@ public class CodeAnalyzer extends BLangNodeVisitor {
 
     @Override
     public void visit(BLangErrorMatchPattern errorMatchPattern) {}
+
+    @Override
+    public void visit(BLangErrorBindingPattern errorBindingPattern) {}
 
     @Override
     public void visit(BLangMatch matchStmt) {
