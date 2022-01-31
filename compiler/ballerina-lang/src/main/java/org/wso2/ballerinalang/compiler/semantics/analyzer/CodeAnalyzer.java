@@ -284,7 +284,6 @@ public class CodeAnalyzer extends SimpleBLangNodeAnalyzer<CodeAnalyzer.AnalyzerD
             new CompilerContext.Key<>();
 
     private final SymbolResolver symResolver;
-    private boolean failureHandled;
     private boolean failVisited;
     private boolean withinLockBlock;
     private final SymbolTable symTable;
@@ -600,7 +599,6 @@ public class CodeAnalyzer extends SimpleBLangNodeAnalyzer<CodeAnalyzer.AnalyzerD
         }
 
         this.errorTypes.push(new LinkedHashSet<>());
-        boolean failureHandled = this.failureHandled;
 
         boolean previousWithinTxScope = this.withinTransactionScope;
         int previousCommitCount = this.commitCount;
@@ -616,11 +614,12 @@ public class CodeAnalyzer extends SimpleBLangNodeAnalyzer<CodeAnalyzer.AnalyzerD
         this.returnWithinTransactionCheckStack.push(false);
         this.doneWithinTransactionCheckStack.push(false);
         data.transactionCount++;
-        if (!this.failureHandled) {
-            this.failureHandled = transactionNode.onFailClause != null;
+        boolean failureHandled = data.failureHandled;
+        if (!failureHandled) {
+            data.failureHandled = transactionNode.onFailClause != null;
         }
         analyzeNodex(transactionNode.transactionBody, data);
-        this.failureHandled = failureHandled;
+        data.failureHandled = failureHandled;
         if (commitCount < 1) {
             this.dlog.error(transactionNode.pos, DiagnosticErrorCode.INVALID_COMMIT_COUNT);
         }
@@ -691,13 +690,13 @@ public class CodeAnalyzer extends SimpleBLangNodeAnalyzer<CodeAnalyzer.AnalyzerD
     @Override
     public void visit(BLangRetry retryNode, AnalyzerData data) {
         this.errorTypes.push(new LinkedHashSet<>());
-        boolean failureHandled = this.failureHandled;
-        if (!this.failureHandled) {
-            this.failureHandled = retryNode.onFailClause != null;
+        boolean failureHandled = data.failureHandled;
+        if (!failureHandled) {
+            data.failureHandled = retryNode.onFailClause != null;
         }
         visitNode(retryNode.retrySpec, data);
         visitNode(retryNode.retryBody, data);
-        this.failureHandled = failureHandled;
+        data.failureHandled = failureHandled;
         retryNode.retryBody.failureBreakMode = retryNode.onFailClause != null ?
                 BLangBlockStmt.FailureBreakMode.BREAK_TO_OUTER_BLOCK : BLangBlockStmt.FailureBreakMode.NOT_BREAKABLE;
         analyzeOnFailClause(retryNode.onFailClause, data);
@@ -812,8 +811,9 @@ public class CodeAnalyzer extends SimpleBLangNodeAnalyzer<CodeAnalyzer.AnalyzerD
     public void visit(BLangMatchStatement matchStatement, AnalyzerData data) {
         this.errorTypes.push(new LinkedHashSet<>());
         analyzeExpr(matchStatement.expr, data);
-        if (!this.failureHandled) {
-            this.failureHandled = matchStatement.onFailClause != null;
+        boolean failureHandled = data.failureHandled;
+        if (!failureHandled) {
+            data.failureHandled = matchStatement.onFailClause != null;
         }
 
         List<BLangMatchClause> matchClauses = matchStatement.matchClauses;
@@ -830,6 +830,7 @@ public class CodeAnalyzer extends SimpleBLangNodeAnalyzer<CodeAnalyzer.AnalyzerD
             }
             analyzeNodex(matchClause, data);
         }
+        data.failureHandled = failureHandled;
         analyzeOnFailClause(matchStatement.onFailClause, data);
         this.errorTypes.pop();
     }
@@ -1623,8 +1624,8 @@ public class CodeAnalyzer extends SimpleBLangNodeAnalyzer<CodeAnalyzer.AnalyzerD
     @Override
     public void visit(BLangMatch matchStmt, AnalyzerData data) {
         this.errorTypes.push(new LinkedHashSet<>());
-        if (!this.failureHandled) {
-            this.failureHandled = matchStmt.onFailClause != null;
+        if (!data.failureHandled) {
+            data.failureHandled = matchStmt.onFailClause != null;
         }
         analyzeExpr(matchStmt.expr, data);
 
@@ -2236,15 +2237,15 @@ public class CodeAnalyzer extends SimpleBLangNodeAnalyzer<CodeAnalyzer.AnalyzerD
         SymbolEnv foreachEnv = SymbolEnv.createLoopEnv(foreach, data.env);
         this.loopWithinTransactionCheckStack.push(true);
         this.errorTypes.push(new LinkedHashSet<>());
-        boolean failureHandled = this.failureHandled;
-        if (!this.failureHandled) {
-            this.failureHandled = foreach.onFailClause != null;
+        boolean failureHandled = data.failureHandled;
+        if (!data.failureHandled) {
+            data.failureHandled = foreach.onFailClause != null;
         }
         data.loopCount++;
         BLangBlockStmt body = foreach.body;
         analyzeNodeWithEnv(body, foreachEnv, data);
         data.loopCount--;
-        this.failureHandled = failureHandled;
+        data.failureHandled = failureHandled;
         this.loopWithinTransactionCheckStack.pop();
         analyzeExpr(foreach.collection, data);
         body.failureBreakMode = foreach.onFailClause != null ?
@@ -2258,15 +2259,15 @@ public class CodeAnalyzer extends SimpleBLangNodeAnalyzer<CodeAnalyzer.AnalyzerD
         SymbolEnv whileEnv = SymbolEnv.createLoopEnv(whileNode, data.env);
         this.loopWithinTransactionCheckStack.push(true);
         this.errorTypes.push(new LinkedHashSet<>());
-        boolean failureHandled = this.failureHandled;
-        if (!this.failureHandled) {
-            this.failureHandled = whileNode.onFailClause != null;
+        boolean failureHandled = data.failureHandled;
+        if (!data.failureHandled) {
+            data.failureHandled = whileNode.onFailClause != null;
         }
         data.loopCount++;
         BLangBlockStmt body = whileNode.body;
         analyzeNodeWithEnv(body, whileEnv, data);
         data.loopCount--;
-        this.failureHandled = failureHandled;
+        data.failureHandled = failureHandled;
         this.loopWithinTransactionCheckStack.pop();
         analyzeExpr(whileNode.expr, data);
         analyzeOnFailClause(whileNode.onFailClause, data);
@@ -2276,12 +2277,12 @@ public class CodeAnalyzer extends SimpleBLangNodeAnalyzer<CodeAnalyzer.AnalyzerD
     @Override
     public void visit(BLangDo doNode, AnalyzerData data) {
         this.errorTypes.push(new LinkedHashSet<>());
-        boolean failureHandled = this.failureHandled;
-        if (!this.failureHandled) {
-            this.failureHandled = doNode.onFailClause != null;
+        boolean failureHandled = data.failureHandled;
+        if (!data.failureHandled) {
+            data.failureHandled = doNode.onFailClause != null;
         }
         analyzeNodex(doNode.body, data);
-        this.failureHandled = failureHandled;
+        data.failureHandled = failureHandled;
         doNode.body.failureBreakMode = doNode.onFailClause != null ?
                 BLangBlockStmt.FailureBreakMode.BREAK_TO_OUTER_BLOCK : BLangBlockStmt.FailureBreakMode.NOT_BREAKABLE;
         analyzeOnFailClause(doNode.onFailClause, data);
@@ -2301,7 +2302,7 @@ public class CodeAnalyzer extends SimpleBLangNodeAnalyzer<CodeAnalyzer.AnalyzerD
         if (!this.errorTypes.empty()) {
             this.errorTypes.peek().add(getErrorTypes(failNode.expr.getBType()));
         }
-        if (!this.failureHandled) {
+        if (!data.failureHandled) {
             BType exprType = data.env.enclInvokable.getReturnTypeNode().getBType();
             this.returnTypes.peek().add(exprType);
             if (!types.isAssignable(getErrorTypes(failNode.expr.getBType()), exprType)) {
@@ -2313,15 +2314,15 @@ public class CodeAnalyzer extends SimpleBLangNodeAnalyzer<CodeAnalyzer.AnalyzerD
     @Override
     public void visit(BLangLock lockNode, AnalyzerData data) {
         this.errorTypes.push(new LinkedHashSet<>());
-        boolean failureHandled = this.failureHandled;
-        if (!this.failureHandled) {
-            this.failureHandled = lockNode.onFailClause != null;
+        boolean failureHandled = data.failureHandled;
+        if (!data.failureHandled) {
+            data.failureHandled = lockNode.onFailClause != null;
         }
         boolean previousWithinLockBlock = this.withinLockBlock;
         this.withinLockBlock = true;
         lockNode.body.stmts.forEach(e -> analyzeNodex(e, data));
         this.withinLockBlock = previousWithinLockBlock;
-        this.failureHandled = failureHandled;
+        data.failureHandled = failureHandled;
         lockNode.body.failureBreakMode = lockNode.onFailClause != null ?
                 BLangBlockStmt.FailureBreakMode.BREAK_TO_OUTER_BLOCK : BLangBlockStmt.FailureBreakMode.NOT_BREAKABLE;
         analyzeOnFailClause(lockNode.onFailClause, data);
@@ -3805,7 +3806,7 @@ public class CodeAnalyzer extends SimpleBLangNodeAnalyzer<CodeAnalyzer.AnalyzerD
             return;
         }
 
-        if (!this.failureHandled && !types.isAssignable(errorType, exprType) &&
+        if (!data.failureHandled && !types.isAssignable(errorType, exprType) &&
                 !types.isNeverTypeOrStructureTypeWithARequiredNeverMember(checkedExprType)) {
             dlog.error(checkedExpr.pos,
                     DiagnosticErrorCode.CHECKED_EXPR_NO_MATCHING_ERROR_RETURN_IN_ENCL_INVOKABLE);
@@ -4759,5 +4760,6 @@ public class CodeAnalyzer extends SimpleBLangNodeAnalyzer<CodeAnalyzer.AnalyzerD
         boolean loopAlterNotAllowed;
         boolean inInternallyDefinedBlockStmt;
         int transactionCount;
+        boolean failureHandled;
     }
 }
