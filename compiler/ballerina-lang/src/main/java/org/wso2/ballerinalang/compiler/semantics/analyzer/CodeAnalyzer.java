@@ -297,7 +297,6 @@ public class CodeAnalyzer extends SimpleBLangNodeAnalyzer<CodeAnalyzer.AnalyzerD
     private final Stack<LinkedHashSet<BType>> returnTypes = new Stack<>();
     private final Stack<LinkedHashSet<BType>> errorTypes = new Stack<>();
     private final boolean enableExperimentalFeatures;
-    private int rollbackCount;
     private boolean withinTransactionScope;
     private boolean commitRollbackAllowed;
     private int commitCountWithinBlock;
@@ -599,11 +598,11 @@ public class CodeAnalyzer extends SimpleBLangNodeAnalyzer<CodeAnalyzer.AnalyzerD
 
         boolean previousWithinTxScope = this.withinTransactionScope;
         int previousCommitCount = data.commitCount;
-        int previousRollbackCount = this.rollbackCount;
+        int previousRollbackCount = data.rollbackCount;
         boolean prevCommitRollbackAllowed = this.commitRollbackAllowed;
         this.commitRollbackAllowed = true;
         data.commitCount = 0;
-        this.rollbackCount = 0;
+        data.rollbackCount = 0;
 
         this.withinTransactionScope = true;
 
@@ -624,7 +623,7 @@ public class CodeAnalyzer extends SimpleBLangNodeAnalyzer<CodeAnalyzer.AnalyzerD
         data.transactionCount--;
         this.withinTransactionScope = previousWithinTxScope;
         data.commitCount = previousCommitCount;
-        this.rollbackCount = previousRollbackCount;
+        data.rollbackCount = previousRollbackCount;
         this.commitRollbackAllowed = prevCommitRollbackAllowed;
         this.returnWithinTransactionCheckStack.pop();
         this.loopWithinTransactionCheckStack.pop();
@@ -665,7 +664,7 @@ public class CodeAnalyzer extends SimpleBLangNodeAnalyzer<CodeAnalyzer.AnalyzerD
 
     @Override
     public void visit(BLangRollback rollbackNode, AnalyzerData data) {
-        rollbackCount++;
+        data.rollbackCount++;
         this.rollbackCountWithinBlock++;
         if (data.transactionCount == 0 && !withinTransactionScope) {
             this.dlog.error(rollbackNode.pos, DiagnosticErrorCode.ROLLBACK_CANNOT_BE_OUTSIDE_TRANSACTION_BLOCK);
@@ -772,7 +771,7 @@ public class CodeAnalyzer extends SimpleBLangNodeAnalyzer<CodeAnalyzer.AnalyzerD
     public void visit(BLangIf ifStmt, AnalyzerData data) {
         boolean independentBlocks = false;
         int prevCommitCount = data.commitCount;
-        int prevRollbackCount = rollbackCount;
+        int prevRollbackCount = data.rollbackCount;
         BLangStatement elseStmt = ifStmt.elseStmt;
         if (withinTransactionScope && elseStmt != null && elseStmt.getKind() != NodeKind.IF) {
                 independentBlocks = true;
@@ -796,7 +795,7 @@ public class CodeAnalyzer extends SimpleBLangNodeAnalyzer<CodeAnalyzer.AnalyzerD
                 withinTransactionScope = true;
             }
             analyzeNodex(elseStmt, data);
-            if ((prevCommitCount != data.commitCount) || prevRollbackCount != rollbackCount) {
+            if ((prevCommitCount != data.commitCount) || prevRollbackCount != data.rollbackCount) {
                 commitRollbackAllowed = false;
             }
         }
@@ -4736,5 +4735,6 @@ public class CodeAnalyzer extends SimpleBLangNodeAnalyzer<CodeAnalyzer.AnalyzerD
         boolean failVisited;
         boolean withinLockBlock;
         int commitCount;
+        int rollbackCount;
     }
 }
