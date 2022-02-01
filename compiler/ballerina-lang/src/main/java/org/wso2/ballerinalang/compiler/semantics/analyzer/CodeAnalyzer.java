@@ -286,7 +286,6 @@ public class CodeAnalyzer extends SimpleBLangNodeAnalyzer<CodeAnalyzer.AnalyzerD
     private final Types types;
     private final BLangDiagnosticLog dlog;
     private final TypeChecker typeChecker;
-    private Stack<Boolean> loopWithinTransactionCheckStack = new Stack<>();
     private Stack<Boolean> returnWithinTransactionCheckStack = new Stack<>();
     private Stack<Boolean> doneWithinTransactionCheckStack = new Stack<>();
     private Stack<Boolean> transactionalFuncCheckStack = new Stack<>();
@@ -594,7 +593,7 @@ public class CodeAnalyzer extends SimpleBLangNodeAnalyzer<CodeAnalyzer.AnalyzerD
 
         data.withinTransactionScope = true;
 
-        this.loopWithinTransactionCheckStack.push(false);
+        data.loopWithinTransactionCheckStack.push(false);
         this.returnWithinTransactionCheckStack.push(false);
         this.doneWithinTransactionCheckStack.push(false);
         data.transactionCount++;
@@ -614,7 +613,7 @@ public class CodeAnalyzer extends SimpleBLangNodeAnalyzer<CodeAnalyzer.AnalyzerD
         data.rollbackCount = previousRollbackCount;
         data.commitRollbackAllowed = prevCommitRollbackAllowed;
         this.returnWithinTransactionCheckStack.pop();
-        this.loopWithinTransactionCheckStack.pop();
+        data.loopWithinTransactionCheckStack.pop();
         this.doneWithinTransactionCheckStack.pop();
         analyzeOnFailClause(transactionNode.onFailClause, data);
         this.errorTypes.pop();
@@ -643,7 +642,7 @@ public class CodeAnalyzer extends SimpleBLangNodeAnalyzer<CodeAnalyzer.AnalyzerD
             return;
         }
         if (!data.withinTransactionScope || !data.commitRollbackAllowed ||
-                (!this.loopWithinTransactionCheckStack.empty() && this.loopWithinTransactionCheckStack.peek())) {
+                data.loopWithinTransactionCheckStack.peek()) {
             this.dlog.error(commitExpr.pos, DiagnosticErrorCode.COMMIT_NOT_ALLOWED);
             return;
         }
@@ -663,7 +662,7 @@ public class CodeAnalyzer extends SimpleBLangNodeAnalyzer<CodeAnalyzer.AnalyzerD
             return;
         }
         if (!data.withinTransactionScope || !data.commitRollbackAllowed ||
-                (!this.loopWithinTransactionCheckStack.empty() && this.loopWithinTransactionCheckStack.peek())) {
+                (!data.loopWithinTransactionCheckStack.empty() && data.loopWithinTransactionCheckStack.peek())) {
             this.dlog.error(rollbackNode.pos, DiagnosticErrorCode.ROLLBACK_NOT_ALLOWED);
             return;
         }
@@ -2219,7 +2218,7 @@ public class CodeAnalyzer extends SimpleBLangNodeAnalyzer<CodeAnalyzer.AnalyzerD
     @Override
     public void visit(BLangForeach foreach, AnalyzerData data) {
         SymbolEnv foreachEnv = SymbolEnv.createLoopEnv(foreach, data.env);
-        this.loopWithinTransactionCheckStack.push(true);
+        data.loopWithinTransactionCheckStack.push(true);
         this.errorTypes.push(new LinkedHashSet<>());
         boolean failureHandled = data.failureHandled;
         if (!data.failureHandled) {
@@ -2230,7 +2229,7 @@ public class CodeAnalyzer extends SimpleBLangNodeAnalyzer<CodeAnalyzer.AnalyzerD
         analyzeNodeWithEnv(body, foreachEnv, data);
         data.loopCount--;
         data.failureHandled = failureHandled;
-        this.loopWithinTransactionCheckStack.pop();
+        data.loopWithinTransactionCheckStack.pop();
         analyzeExpr(foreach.collection, data);
         body.failureBreakMode = foreach.onFailClause != null ?
                 BLangBlockStmt.FailureBreakMode.BREAK_TO_OUTER_BLOCK : BLangBlockStmt.FailureBreakMode.NOT_BREAKABLE;
@@ -2241,7 +2240,7 @@ public class CodeAnalyzer extends SimpleBLangNodeAnalyzer<CodeAnalyzer.AnalyzerD
     @Override
     public void visit(BLangWhile whileNode, AnalyzerData data) {
         SymbolEnv whileEnv = SymbolEnv.createLoopEnv(whileNode, data.env);
-        this.loopWithinTransactionCheckStack.push(true);
+        data.loopWithinTransactionCheckStack.push(true);
         this.errorTypes.push(new LinkedHashSet<>());
         boolean failureHandled = data.failureHandled;
         if (!data.failureHandled) {
@@ -2252,7 +2251,7 @@ public class CodeAnalyzer extends SimpleBLangNodeAnalyzer<CodeAnalyzer.AnalyzerD
         analyzeNodeWithEnv(body, whileEnv, data);
         data.loopCount--;
         data.failureHandled = failureHandled;
-        this.loopWithinTransactionCheckStack.pop();
+        data.loopWithinTransactionCheckStack.pop();
         analyzeExpr(whileNode.expr, data);
         analyzeOnFailClause(whileNode.onFailClause, data);
         this.errorTypes.pop();
@@ -4375,7 +4374,7 @@ public class CodeAnalyzer extends SimpleBLangNodeAnalyzer<CodeAnalyzer.AnalyzerD
     }
 
     private boolean checkNextBreakValidityInTransaction(AnalyzerData data) {
-        return !this.loopWithinTransactionCheckStack.peek() && data.transactionCount > 0 && data.withinTransactionScope;
+        return !data.loopWithinTransactionCheckStack.peek() && data.transactionCount > 0 && data.withinTransactionScope;
     }
 
     private boolean checkReturnValidityInTransaction(AnalyzerData data) {
@@ -4725,5 +4724,6 @@ public class CodeAnalyzer extends SimpleBLangNodeAnalyzer<CodeAnalyzer.AnalyzerD
         int commitCountWithinBlock;
         int rollbackCountWithinBlock;
         Stack<WorkerActionSystem> workerActionSystemStack = new Stack<>();
+        Stack<Boolean> loopWithinTransactionCheckStack = new Stack<>();
     }
 }
