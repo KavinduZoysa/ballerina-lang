@@ -130,7 +130,7 @@ public enum SyntaxKind {
     READONLY_KEYWORD(318, "readonly"),
     DISTINCT_KEYWORD(319, "distinct"),
     FAIL_KEYWORD(320, "fail"),
-    RE_KEYWORD(320, "re"),
+    RE_KEYWORD(321, "re"),
 
     // Separators
     OPEN_BRACE_TOKEN(500, "{"), // Any kind above this is considered as a keyword
