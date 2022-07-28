@@ -481,7 +481,6 @@ public enum SyntaxKind {
     GROUPING_KEY_VAR_NAME(3091),
     GROUP_BY_CLAUSE(3092),
 
-
     // XML
     XML_ELEMENT(4000),
     XML_EMPTY_ELEMENT(4001),
