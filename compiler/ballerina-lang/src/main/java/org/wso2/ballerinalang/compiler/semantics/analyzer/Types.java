@@ -1743,9 +1743,10 @@ public class Types {
                         varType = getReferredType(((BIntersectionType) constraint).getEffectiveType());
                         break;
                     case TypeTags.UNION:
-                        Set<BType> collectionTypes = getEffectiveMemberTypes((BUnionType) constraint);
-                        Set<BType> builtinXMLConstraintTypes = getEffectiveMemberTypes
-                                ((BUnionType) ((BXMLType) symTable.xmlType).constraint);
+                        Set<BType> collectionTypes = new LinkedHashSet<>();
+                        getEffectiveMemberTypes((BUnionType) constraint, collectionTypes);
+                        Set<BType> builtinXMLConstraintTypes = new LinkedHashSet<>();
+                        getEffectiveMemberTypes((BUnionType) ((BXMLType) symTable.xmlType).constraint, builtinXMLConstraintTypes);
                         if (collectionTypes.size() == 4 && builtinXMLConstraintTypes.equals(collectionTypes)) {
                             varType = symTable.xmlType;
                         } else {
@@ -1766,6 +1767,7 @@ public class Types {
                                         break;
                                 }
                             }
+                            collectionTypes.clear();
                             varType = BUnionType.create(null, collectionTypesInSymTable);
                         }
                         break;
@@ -2733,17 +2735,25 @@ public class Types {
                 return false;
             }
 
-            Set<BType> sourceTypes = new LinkedHashSet<>(sUnionType.getMemberTypes().size());
-            Set<BType> targetTypes = new LinkedHashSet<>(tUnionType.getMemberTypes().size());
+//            int size = sUnionType.getMemberTypes().size();
+//            Set<BType> sourceTypes = new LinkedHashSet<>(size);
+//            Set<BType> targetTypes = new LinkedHashSet<>(size);
+//
+//            sourceTypes.add(sUnionType);
+//            sourceTypes.addAll(sUnionType.getMemberTypes());
+//            targetTypes.add(tUnionType);
+//            targetTypes.addAll(tUnionType.getMemberTypes());
 
-            sourceTypes.add(sUnionType);
-            sourceTypes.addAll(sUnionType.getMemberTypes());
-            targetTypes.add(tUnionType);
-            targetTypes.addAll(tUnionType.getMemberTypes());
+            if (!isSameType(tUnionType, sUnionType, this.unresolvedTypes)) {
+                return false;
+            }
 
-            boolean notSameType = sourceTypes
+            LinkedHashSet<BType> sMemTypes = sUnionType.getMemberTypes();
+            LinkedHashSet<BType> tMemTypes = tUnionType.getMemberTypes();
+
+            boolean notSameType = sMemTypes
                     .stream()
-                    .map(sT -> targetTypes
+                    .map(sT -> tMemTypes
                             .stream()
                             .anyMatch(it -> isSameType(it, sT, this.unresolvedTypes)))
                     .anyMatch(foundSameType -> !foundSameType);
@@ -2762,8 +2772,8 @@ public class Types {
                 return false;
             }
 
-            Set<BType> sourceTypes = new LinkedHashSet<>(sIntersectionType.getConstituentTypes());
-            Set<BType> targetTypes = new LinkedHashSet<>(tIntersectionType.getConstituentTypes());
+            Set<BType> sourceTypes = sIntersectionType.getConstituentTypes();
+            Set<BType> targetTypes = tIntersectionType.getConstituentTypes();
 
             for (BType sourceType : sourceTypes) {
                 boolean foundSameType = false;
@@ -3649,7 +3659,7 @@ public class Types {
         Set<BType> targetTypes = new LinkedHashSet<>();
 
         if (source.tag == TypeTags.UNION || source.tag == TypeTags.JSON || source.tag == TypeTags.ANYDATA) {
-            sourceTypes.addAll(getEffectiveMemberTypes((BUnionType) source));
+            getEffectiveMemberTypes((BUnionType) source, sourceTypes);
         } else {
             sourceTypes.add(source);
         }
@@ -3657,7 +3667,7 @@ public class Types {
         boolean targetIsAUnion = false;
         if (target.tag == TypeTags.UNION) {
             targetIsAUnion = true;
-            targetTypes.addAll(getEffectiveMemberTypes((BUnionType) target));
+            getEffectiveMemberTypes((BUnionType) target, targetTypes);
         } else {
             targetTypes.add(target);
         }
@@ -3722,6 +3732,8 @@ public class Types {
                 }
             }
             if (sourceTypeIsNotAssignableToAnyTargetType) {
+                sourceTypes.clear();
+                targetTypes.clear();
                 return false;
             }
         }
@@ -3751,11 +3763,15 @@ public class Types {
                 }
             }
             if (sourceTypeIsNotAssignableToAnyTargetType) {
+                sourceTypes.clear();
+                targetTypes.clear();
                 return false;
             }
         }
 
         unresolvedTypes.add(pair);
+        sourceTypes.clear();
+        targetTypes.clear();
         return true;
     }
 
@@ -3862,8 +3878,8 @@ public class Types {
         }
     }
 
-    private Set<BType> getEffectiveMemberTypes(BUnionType unionType) {
-        Set<BType> memTypes = new LinkedHashSet<>();
+    private Set<BType> getEffectiveMemberTypes(BUnionType unionType, Set<BType> memTypes) {
+//        Set<BType> memTypes = new LinkedHashSet<>();
 
         for (BType memberType : unionType.getMemberTypes()) {
             switch (memberType.tag) {
@@ -3871,23 +3887,22 @@ public class Types {
                     BType effectiveType = ((BIntersectionType) memberType).effectiveType;
                     BType refType = getReferredType(effectiveType);
                     if (refType.tag == TypeTags.UNION) {
-                        memTypes.addAll(getEffectiveMemberTypes((BUnionType) refType));
+                        getEffectiveMemberTypes((BUnionType) refType, memTypes);
                         continue;
                     }
                     if (refType.tag == TypeTags.INTERSECTION) {
-                        memTypes.addAll(
-                                getEffectiveMemberTypes((BUnionType) ((BIntersectionType) refType).effectiveType));
+                        getEffectiveMemberTypes((BUnionType) ((BIntersectionType) refType).effectiveType, memTypes);
                         continue;
                     }
                     memTypes.add(effectiveType);
                     break;
                 case TypeTags.UNION:
-                    memTypes.addAll(getEffectiveMemberTypes((BUnionType) memberType));
+                    getEffectiveMemberTypes((BUnionType) memberType, memTypes);
                     break;
                 case TypeTags.TYPEREFDESC:
                     BType constraint = getReferredType(memberType);
                     if (constraint.tag == TypeTags.UNION) {
-                        memTypes.addAll(getEffectiveMemberTypes((BUnionType) constraint));
+                        getEffectiveMemberTypes((BUnionType) constraint, memTypes);
                         continue;
                     }
                     memTypes.add(constraint);

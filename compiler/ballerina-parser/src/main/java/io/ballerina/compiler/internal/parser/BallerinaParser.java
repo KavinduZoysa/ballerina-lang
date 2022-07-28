@@ -360,6 +360,7 @@ public class BallerinaParser extends AbstractParser {
 
         STToken eof = consume();
         endContext();
+        clean();
 
         return STNodeFactory.createModulePartNode(STNodeFactory.createNodeList(importDecls),
                 STNodeFactory.createNodeList(otherDecls), eof);

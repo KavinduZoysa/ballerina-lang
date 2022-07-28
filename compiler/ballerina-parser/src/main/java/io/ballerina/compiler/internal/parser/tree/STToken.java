@@ -145,9 +145,8 @@ public class STToken extends STNode {
     }
 
     private void updateDiagnostics(STNode leadingMinutiae, STNode trailingMinutiae) {
-        if (leadingMinutiae.flags.contains(STNodeFlags.HAS_DIAGNOSTICS) ||
-                trailingMinutiae.flags.contains(STNodeFlags.HAS_DIAGNOSTICS)) {
-            this.flags.add(STNodeFlags.HAS_DIAGNOSTICS);
+        if (leadingMinutiae.hasDiagnostics || trailingMinutiae.hasDiagnostics) {
+            this.hasDiagnostics = true;
         }
     }
 }

@@ -60,6 +60,10 @@ public abstract class AbstractParserErrorHandler {
         this.itterCount = 0;
     }
 
+    public void clean() {
+        this.ctxStack.clear();
+    }
+
     /*
      * Abstract methods, to be implemented by the classes that extends this abstract error handler
      */

@@ -141,6 +141,9 @@ public abstract class AbstractParser {
         this.errorHandler.endContext();
     }
 
+    protected void clean() {
+        this.errorHandler.clean();
+    }
     protected ParserRuleContext getCurrentContext() {
         return this.errorHandler.getParentContext();
     }

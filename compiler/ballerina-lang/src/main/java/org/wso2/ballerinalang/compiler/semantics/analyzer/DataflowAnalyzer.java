@@ -248,11 +248,11 @@ public class DataflowAnalyzer extends BLangNodeVisitor {
     private SymbolTable symTable;
     private BLangDiagnosticLog dlog;
     private Types types;
-    private Map<BSymbol, InitStatus> uninitializedVars;
+    private Map<BSymbol, InitStatus> uninitializedVars = new LinkedHashMap<>();
     private Map<BSymbol, Location> unusedErrorVarsDeclaredWithVar;
     private Map<BSymbol, Location> unusedLocalVariables;
-    private Map<BSymbol, Set<BSymbol>> globalNodeDependsOn;
-    private Map<BSymbol, Set<BSymbol>> functionToDependency;
+    private Map<BSymbol, Set<BSymbol>> globalNodeDependsOn = new LinkedHashMap<>();
+    private Map<BSymbol, Set<BSymbol>> functionToDependency = new HashMap<>();
     private boolean flowTerminated = false;
 
     private static final CompilerContext.Key<DataflowAnalyzer> DATAFLOW_ANALYZER_KEY = new CompilerContext.Key<>();
@@ -286,9 +286,11 @@ public class DataflowAnalyzer extends BLangNodeVisitor {
      * @return Data-flow analyzed package
      */
     public BLangPackage analyze(BLangPackage pkgNode) {
-        this.uninitializedVars = new LinkedHashMap<>();
-        this.globalNodeDependsOn = new LinkedHashMap<>();
-        this.functionToDependency = new HashMap<>();
+        this.uninitializedVars.clear();
+        this.globalNodeDependsOn.clear();
+        this.functionToDependency.clear();
+        this.unusedLocalVariables.clear();
+        this.currDependentSymbolDeque.clear();
         this.dlog.setCurrentPackageId(pkgNode.packageID);
         SymbolEnv pkgEnv = this.symTable.pkgEnvMap.get(pkgNode.symbol);
         analyzeNode(pkgNode, pkgEnv);

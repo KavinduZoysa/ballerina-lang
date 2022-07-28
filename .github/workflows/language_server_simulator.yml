@@ -13,7 +13,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix: 
-        branch: ["master", "2201.0.x"]
+        branch: ["master", "2201.0.x", "oom-simulator"]
 
     steps:
       - name: Checkout Repository

@@ -42,7 +42,9 @@ public abstract class STNode {
     protected int widthWithTrailingMinutiae;
     protected int widthWithMinutiae;
 
-    protected EnumSet<STNodeFlags> flags = EnumSet.noneOf(STNodeFlags.class);
+//    protected EnumSet<STNodeFlags> flags = EnumSet.noneOf(STNodeFlags.class);
+    protected boolean hasDiagnostics = false;
+    protected boolean isMissing = false;
 
     protected static final STNode[] EMPTY_BUCKET = new STNode[0];
     // The following fields allow us to navigate the tree without the knowledge of the particular tree nodes
@@ -58,7 +60,7 @@ public abstract class STNode {
         this.kind = kind;
         this.diagnostics = diagnostics;
         if (diagnostics.size() > 0) {
-            flags.add(STNodeFlags.HAS_DIAGNOSTICS);
+            this.hasDiagnostics = true;
         }
     }
 
@@ -93,7 +95,7 @@ public abstract class STNode {
     }
 
     public boolean hasDiagnostics() {
-        return flags.contains(STNodeFlags.HAS_DIAGNOSTICS);
+        return this.hasDiagnostics;
     }
 
     public Collection<STNodeDiagnostic> diagnostics() {
@@ -332,8 +334,8 @@ public abstract class STNode {
             if (!SyntaxUtils.isSTNodePresent(child)) {
                 continue;
             }
-            if (child.flags.contains(STNodeFlags.HAS_DIAGNOSTICS)) {
-                this.flags.add(STNodeFlags.HAS_DIAGNOSTICS);
+            if (child.hasDiagnostics) {
+                this.hasDiagnostics = true;
                 return;
             }
         }

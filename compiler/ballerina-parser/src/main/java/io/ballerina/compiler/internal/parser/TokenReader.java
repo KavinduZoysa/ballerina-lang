@@ -91,6 +91,8 @@ public class TokenReader extends AbstractTokenReader {
                 // We reach here when the BUFFER_SIZE is exceeded.
                 // To avoid parser being crashed, return EOF token as peek(k) for k > BUFFER_SIZE.
                 STNode emptyTrivia = STNodeFactory.createEmptyNodeList();
+                STToken tk = STNodeFactory.createToken(SyntaxKind.EOF_TOKEN, emptyTrivia, emptyTrivia);
+
                 return STNodeFactory.createToken(SyntaxKind.EOF_TOKEN, emptyTrivia, emptyTrivia);
             }
 

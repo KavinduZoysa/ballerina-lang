@@ -31,13 +31,14 @@ import java.util.stream.Collectors;
  */
 public class SyntaxInfo {
 
+    static SyntaxKind[] syntaxKindValues = SyntaxKind.values();
     /**
      * Gives a list of all keywords in the ballerina.
      *
      * @return reserved keyword list
      */
     public static List<String> keywords() {
-        return Arrays.stream(SyntaxKind.values())
+        return Arrays.stream(syntaxKindValues)
                 .filter(syntaxKind -> SyntaxKind.OPEN_BRACE_TOKEN.compareTo(syntaxKind) > 0)
                 .map(SyntaxKind::stringValue)
                 .collect(Collectors.toList());
