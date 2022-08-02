@@ -1305,7 +1305,7 @@ public class TestBuildProject extends BaseTest {
 
         // 3) Compile the package
         PackageCompilation compilation = currentPackage.getCompilation();
-        Assert.assertEquals(compilation.diagnosticResult().diagnosticCount(), 5);
+        Assert.assertEquals(compilation.diagnosticResult().diagnosticCount(), 1);
 
         // 4) Edit a module that is used by another module
         Module module = currentPackage.module(ModuleName.from(PackageName.from("myproject"), "util"));
@@ -1314,7 +1314,7 @@ public class TestBuildProject extends BaseTest {
 
         PackageCompilation compilation1 = project.currentPackage().getCompilation();
         DiagnosticResult diagnosticResult = compilation1.diagnosticResult();
-        Assert.assertEquals(diagnosticResult.diagnosticCount(), 2);
+        Assert.assertEquals(diagnosticResult.diagnosticCount(), 1);
 
         Iterator<Diagnostic> diagnosticIterator = diagnosticResult.diagnostics().iterator();
         Diagnostic firstDiagnostic = diagnosticIterator.next();
