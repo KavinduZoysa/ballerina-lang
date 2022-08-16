@@ -199,7 +199,7 @@ public class BallerinaParserErrorHandler extends AbstractParserErrorHandler {
             { ParserRuleContext.BLOCK_STMT, ParserRuleContext.TYPE_DESC_IN_TYPE_BINDING_PATTERN };
 
     private static final ParserRuleContext[] GROUPING_KEY_LIST_ELEMENT =
-            { ParserRuleContext.VARIABLE_NAME, ParserRuleContext.GROUPING_KEY_LIST_VAR_DECLARATION };
+            { ParserRuleContext.VARIABLE_NAME, ParserRuleContext.TYPE_DESC_BEFORE_IDENTIFIER_IN_GROUPING_KEY };
 
     private static final ParserRuleContext[] GROUPING_KEY_LIST_ELEMENT_END =
             { ParserRuleContext.GROUP_BY_CLAUSE_END, ParserRuleContext.COMMA };
@@ -2995,8 +2995,8 @@ public class BallerinaParserErrorHandler extends AbstractParserErrorHandler {
                         ParserRuleContext.CONDITIONAL_EXPRESSION, ParserRuleContext.XML_NAVIGATE_EXPR,
                         ParserRuleContext.MEMBER_ACCESS_KEY_EXPR };
                 break;
-            case GROUPING_KEY_LIST_VAR_DECLARATION:
-                alternatives = new ParserRuleContext[] { ParserRuleContext.GROUPING_KEY_LIST_VAR_DECLARATION_END,
+            case GROUP_BY_CLAUSE:
+                alternatives = new ParserRuleContext[] { ParserRuleContext.GROUPING_KEY_LIST_ELEMENT_END,
                         ParserRuleContext.BINARY_OPERATOR, ParserRuleContext.DOT,
                         ParserRuleContext.ANNOT_CHAINING_TOKEN, ParserRuleContext.OPTIONAL_CHAINING_TOKEN,
                         ParserRuleContext.CONDITIONAL_EXPRESSION, ParserRuleContext.XML_NAVIGATE_EXPR,
@@ -3520,11 +3520,6 @@ public class BallerinaParserErrorHandler extends AbstractParserErrorHandler {
                 return ParserRuleContext.LET_VAR_DECL_START;
             case ORDER_KEY_LIST:
                 return ParserRuleContext.EXPRESSION;
-            case GROUPING_KEY_LIST_VAR_DECLARATION:
-                return ParserRuleContext.TYPE_DESC_BEFORE_IDENTIFIER_IN_GROUPING_KEY;
-            case GROUPING_KEY_LIST_VAR_DECLARATION_END:
-                endContext();
-                return ParserRuleContext.GROUPING_KEY_LIST_ELEMENT_END;
             case END_OF_TYPE_DESC:
                 return getNextRuleForTypeDescriptor();
             case TYPED_BINDING_PATTERN:
@@ -4262,7 +4257,6 @@ public class BallerinaParserErrorHandler extends AbstractParserErrorHandler {
             case SELECT_CLAUSE:
             case JOIN_CLAUSE:
             case GROUP_BY_CLAUSE:
-            case GROUPING_KEY_LIST_VAR_DECLARATION:
             case ON_FAIL_CLAUSE:
             case BRACED_EXPR_OR_ANON_FUNC_PARAMS:
             case MODULE_CLASS_DEFINITION:
@@ -4455,7 +4449,7 @@ public class BallerinaParserErrorHandler extends AbstractParserErrorHandler {
             case QUERY_EXPRESSION:
             case TABLE_CONSTRUCTOR_OR_QUERY_EXPRESSION:
             case ORDER_KEY_LIST:
-            case GROUPING_KEY_LIST_VAR_DECLARATION:
+            case GROUP_BY_CLAUSE:
             case SELECT_CLAUSE:
             case JOIN_CLAUSE:
             case ON_CONFLICT_CLAUSE:
@@ -4735,7 +4729,7 @@ public class BallerinaParserErrorHandler extends AbstractParserErrorHandler {
             case LET_EXPR_LET_VAR_DECL:
             case LET_CLAUSE_LET_VAR_DECL:
             case ENUM_MEMBER_LIST:
-            case GROUPING_KEY_LIST_VAR_DECLARATION:
+            case GROUP_BY_CLAUSE:
                 return ParserRuleContext.EXPRESSION;
             case FUNC_DEF_OR_FUNC_TYPE:
                 switchContext(ParserRuleContext.VAR_DECL_STMT);
@@ -4966,7 +4960,6 @@ public class BallerinaParserErrorHandler extends AbstractParserErrorHandler {
         ParserRuleContext parentCtx = getParentContext();
         switch (parentCtx) {
             case ASSIGNMENT_STMT:
-            case GROUPING_KEY_LIST_VAR_DECLARATION:
                 return ParserRuleContext.ASSIGNMENT_STMT_RHS;
             case CALL_STMT:
                 return ParserRuleContext.ARG_LIST;
@@ -5394,7 +5387,7 @@ public class BallerinaParserErrorHandler extends AbstractParserErrorHandler {
             case LET_CLAUSE_LET_VAR_DECL:
             case LET_EXPR_LET_VAR_DECL:
             case ASSIGNMENT_STMT:
-            case GROUPING_KEY_LIST_VAR_DECLARATION:
+            case GROUP_BY_CLAUSE:
                 return ParserRuleContext.ASSIGN_OP;
             case MATCH_PATTERN:
                 return ParserRuleContext.MATCH_PATTERN_LIST_MEMBER_RHS;
