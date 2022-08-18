@@ -800,7 +800,10 @@ public enum DiagnosticErrorCode implements DiagnosticCode {
     CANNOT_INFER_TYPEDESC_ARGUMENT_WITHOUT_CET("BCE4046",
             "cannot.infer.typedesc.argument.without.cet"),
     OUTER_JOIN_MUST_BE_DECLARED_WITH_VAR(
-            "BCE4047", "outer.join.must.be.declared.with.var")        
+            "BCE4047", "outer.join.must.be.declared.with.var"),
+
+    // group by clause related codes
+    INVALID_GROUPING_KEY("BCE4048", "invalid.grouping.key")
     ;
 
     private String diagnosticId;

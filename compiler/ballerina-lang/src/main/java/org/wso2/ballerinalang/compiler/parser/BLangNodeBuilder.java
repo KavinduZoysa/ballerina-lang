@@ -261,6 +261,7 @@ import io.ballerina.tools.text.LineRange;
 import io.ballerina.tools.text.TextRange;
 import org.ballerinalang.model.TreeBuilder;
 import org.ballerinalang.model.TreeUtils;
+import org.ballerinalang.model.clauses.GroupingKeyNode;
 import org.ballerinalang.model.elements.AttachPoint;
 import org.ballerinalang.model.elements.Flag;
 import org.ballerinalang.model.elements.PackageID;
@@ -322,19 +323,7 @@ import org.wso2.ballerinalang.compiler.tree.bindingpatterns.BLangNamedArgBinding
 import org.wso2.ballerinalang.compiler.tree.bindingpatterns.BLangRestBindingPattern;
 import org.wso2.ballerinalang.compiler.tree.bindingpatterns.BLangSimpleBindingPattern;
 import org.wso2.ballerinalang.compiler.tree.bindingpatterns.BLangWildCardBindingPattern;
-import org.wso2.ballerinalang.compiler.tree.clauses.BLangDoClause;
-import org.wso2.ballerinalang.compiler.tree.clauses.BLangFromClause;
-import org.wso2.ballerinalang.compiler.tree.clauses.BLangJoinClause;
-import org.wso2.ballerinalang.compiler.tree.clauses.BLangLetClause;
-import org.wso2.ballerinalang.compiler.tree.clauses.BLangLimitClause;
-import org.wso2.ballerinalang.compiler.tree.clauses.BLangMatchClause;
-import org.wso2.ballerinalang.compiler.tree.clauses.BLangOnClause;
-import org.wso2.ballerinalang.compiler.tree.clauses.BLangOnConflictClause;
-import org.wso2.ballerinalang.compiler.tree.clauses.BLangOnFailClause;
-import org.wso2.ballerinalang.compiler.tree.clauses.BLangOrderByClause;
-import org.wso2.ballerinalang.compiler.tree.clauses.BLangOrderKey;
-import org.wso2.ballerinalang.compiler.tree.clauses.BLangSelectClause;
-import org.wso2.ballerinalang.compiler.tree.clauses.BLangWhereClause;
+import org.wso2.ballerinalang.compiler.tree.clauses.*;
 import org.wso2.ballerinalang.compiler.tree.expressions.BLangAccessExpression;
 import org.wso2.ballerinalang.compiler.tree.expressions.BLangAnnotAccessExpr;
 import org.wso2.ballerinalang.compiler.tree.expressions.BLangArrowFunction;
@@ -4043,6 +4032,43 @@ public class BLangNodeBuilder extends NodeTransformer<BLangNode> {
     }
 
     @Override
+    public BLangNode transform(GroupByClauseNode groupByClauseNode) {
+        BLangGroupByClause groupByClause = (BLangGroupByClause) TreeBuilder.createGroupByClauseNode();
+        groupByClause.pos = getPosition(groupByClauseNode);
+
+        for (Node node : groupByClauseNode.groupingKey()) {
+            BLangNode keyNode = node.apply(this);
+            BLangGroupingKey groupingKeyNode = (BLangGroupingKey) TreeBuilder.createGroupingKeyNode();
+            if (keyNode.getKind() == NodeKind.VARIABLE_DEF) {
+                groupingKeyNode.variableDef = (BLangSimpleVariableDef) keyNode;
+            } else if (keyNode.getKind() == NodeKind.SIMPLE_VARIABLE_REF) {
+                groupingKeyNode.variableRef = (BLangSimpleVarRef) keyNode;
+            } else {
+                dlog.error(keyNode.pos, DiagnosticErrorCode.INVALID_GROUPING_KEY);
+            }
+            groupByClause.addGroupingKey(groupingKeyNode);
+        }
+        return groupByClause;
+    }
+
+    @Override
+    public BLangNode transform(GroupingKeyVarDeclarationNode groupingKeyVarDeclarationNode) {
+        Location variablePos = getPosition(groupingKeyVarDeclarationNode);
+        BLangSimpleVariableDef groupingVarDef = (BLangSimpleVariableDef) TreeBuilder.createSimpleVariableDefinitionNode();
+        BLangVariable variable = getBLangVariableNode(groupingKeyVarDeclarationNode.variableName(), variablePos);
+        groupingVarDef.pos = variable.pos = variablePos;
+        BLangExpression expr = createExpression(groupingKeyVarDeclarationNode.expression());
+        variable.setInitialExpression(expr);
+        groupingVarDef.setVariable(variable);
+        TypeDescriptorNode typeDesc = groupingKeyVarDeclarationNode.typeDescriptor();
+        variable.isDeclaredWithVar = isDeclaredWithVar(typeDesc);
+        if (!variable.isDeclaredWithVar) {
+            variable.setTypeNode(createTypeNode(typeDesc));
+        }
+        return groupingVarDef;
+    }
+
+    @Override
     public BLangNode transform(OrderByClauseNode orderByClauseNode) {
         BLangOrderByClause orderByClause = (BLangOrderByClause) TreeBuilder.createOrderByClauseNode();
         orderByClause.pos = getPosition(orderByClauseNode);
@@ -4431,7 +4457,7 @@ public class BLangNodeBuilder extends NodeTransformer<BLangNode> {
             listConstructorExpr.pos = getPosition(clientResourceAccessActionNode.slashToken());
         } else {
             listConstructorExpr.pos = 
-                    getPosition(clientResourceAccessActionNode.slashToken(), 
+                    getPosition(clientResourceAccessActionNode.slashToken(),
                             resourceAccessPath.get(pathSegments.size() - 1));
         }
         
