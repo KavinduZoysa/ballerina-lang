@@ -4290,7 +4290,7 @@
         },
         {
           "name": "variableName",
-          "type": "CaptureBindingPatternNode"
+          "type": "BindingPatternNode"
         },
         {
           "name": "equalsToken",
