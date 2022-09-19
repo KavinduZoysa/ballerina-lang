@@ -4289,7 +4289,7 @@
                     "type": "TypeDescriptorNode"
                 },
                 {
-                    "name": "variableName",
+                    "name": "simpleBindingPattern",
                     "type": "BindingPatternNode"
                 },
                 {
