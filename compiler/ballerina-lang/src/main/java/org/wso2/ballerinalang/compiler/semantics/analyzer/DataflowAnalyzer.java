@@ -1552,7 +1552,7 @@ public class DataflowAnalyzer extends BLangNodeVisitor {
 
     @Override
     public void visit(BLangGroupByClause groupByClause) {
-        groupByClause.groupingKeyList.forEach(value -> analyzeNode((BLangNode) value, env));
+        groupByClause.groupingKeyList.forEach(value -> analyzeNode(value, env));
     }
 
     @Override
