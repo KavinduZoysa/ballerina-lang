@@ -532,6 +532,9 @@ public abstract class STNodeVisitor {
     public void visit(STSelectClauseNode selectClauseNode) {
         visitSyntaxNode(selectClauseNode);
     }
+    public void visit(STCollectClauseNode collectClauseNode) {
+        visitSyntaxNode(collectClauseNode);
+    }
 
     public void visit(STQueryExpressionNode queryExpressionNode) {
         visitSyntaxNode(queryExpressionNode);

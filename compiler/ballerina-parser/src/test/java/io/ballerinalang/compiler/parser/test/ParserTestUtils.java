@@ -555,6 +555,8 @@ public class ParserTestUtils {
                 return SyntaxKind.QUERY_PIPELINE;
             case "SELECT_CLAUSE":
                 return SyntaxKind.SELECT_CLAUSE;
+            case "COLLECT_CLAUSE":
+                return SyntaxKind.COLLECT_CLAUSE;
             case "ORDER_BY_CLAUSE":
                 return SyntaxKind.ORDER_BY_CLAUSE;
             case "GROUP_BY_CLAUSE":
@@ -1228,6 +1230,8 @@ public class ParserTestUtils {
                 return SyntaxKind.WHERE_KEYWORD;
             case "SELECT_KEYWORD":
                 return SyntaxKind.SELECT_KEYWORD;
+            case "COLLECT_KEYWORD":
+                return SyntaxKind.COLLECT_KEYWORD;
             case "ORDER_KEYWORD":
                 return SyntaxKind.ORDER_KEYWORD;
             case "BY_KEYWORD":

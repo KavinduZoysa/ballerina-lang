@@ -44,6 +44,9 @@ public class BLangSimpleVarRef extends BLangVariableReference implements SimpleV
     // Semantic Data
     public BSymbol varSymbol;
 
+    // Used in `collect` clause to identify whether a variable reference is sequence or not.
+    public boolean isSequence;
+
     @Override
     public BLangIdentifier getPackageAlias() {
         return pkgAlias;

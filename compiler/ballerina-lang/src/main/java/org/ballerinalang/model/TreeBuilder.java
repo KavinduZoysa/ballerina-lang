@@ -17,6 +17,7 @@
  */
 package org.ballerinalang.model;
 
+import org.ballerinalang.model.clauses.CollectClauseNode;
 import org.ballerinalang.model.clauses.DoClauseNode;
 import org.ballerinalang.model.clauses.GroupByClauseNode;
 import org.ballerinalang.model.clauses.GroupingKeyNode;
@@ -967,6 +968,10 @@ public class TreeBuilder {
 
     public static SelectClauseNode createSelectClauseNode() {
         return new BLangSelectClause();
+    }
+
+    public static CollectClauseNode createCollectClauseNode() {
+        return new BLangCollectClause();
     }
 
     public static OnConflictClauseNode createOnConflictClauseNode() {

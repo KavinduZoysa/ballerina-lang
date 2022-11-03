@@ -207,6 +207,10 @@ public enum DiagnosticErrorCode implements DiagnosticCode {
     COMMIT_NOT_ALLOWED("BCE2324", "commit.not.allowed"),
     ROLLBACK_NOT_ALLOWED("BCE2325", "rollback.not.allowed"),
     INCOMPATIBLE_TYPE_IN_SELECT_CLAUSE("BCE2326", "incompatible.type.in.select.clause"),
+    ARG_NOT_ALLOWED_AFTER_SEQUENCE_ARG("BCE2327", "args.not.allowed.after.sequence.arg"),
+    SEQUENCE_VARIABLE_IN_INVALID_CONTEXT("BCE2328", "sequence.variable.in.invalid.context"),
+    USER_DEFINED_FUNCTIONS_NOT_ALLOWED_IN_COLLECT("BCE2329", "user.defined.functions.not.allowed.in.collect.clause"),
+    SEQUENCE_VALUE_CANNOT_ASSIGN_TO_FIXED_LENGTH_ARRAY("BCE2330", "sequence.value.cannot.assign.to.fixed.length.array"),
 
     // Service, endpoint related errors codes
     SERVICE_INVALID_OBJECT_TYPE("BCE2400", "service.invalid.object.type"),

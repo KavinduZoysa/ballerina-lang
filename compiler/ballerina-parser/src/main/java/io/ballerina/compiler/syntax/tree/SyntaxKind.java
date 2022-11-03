@@ -101,12 +101,13 @@ public enum SyntaxKind {
     EQUALS_KEYWORD(246, "equals"),
     CLASS_KEYWORD(247, "class"),
     ORDER_KEYWORD(248, "order"),
-    BY_KEYWORD(249, "by"),
-    ASCENDING_KEYWORD(250, "ascending"),
-    DESCENDING_KEYWORD(251, "descending"),
-    UNDERSCORE_KEYWORD(252, "_"),
-    NOT_IS_KEYWORD(253, "!is"),
-    GROUP_KEYWORD(254, "group"),
+    COLLECT_KEYWORD(249, "collect"),
+    BY_KEYWORD(250, "by"),
+    ASCENDING_KEYWORD(251, "ascending"),
+    DESCENDING_KEYWORD(252, "descending"),
+    UNDERSCORE_KEYWORD(253, "_"),
+    NOT_IS_KEYWORD(254, "!is"),
+    GROUP_KEYWORD(255, "group"),
 
     // Type keywords
     INT_KEYWORD(300, "int"),
@@ -480,7 +481,7 @@ public enum SyntaxKind {
     GROUPING_KEY_VAR_DECLARATION(3090),
     GROUPING_KEY_VAR_NAME(3091),
     GROUP_BY_CLAUSE(3092),
-
+    COLLECT_CLAUSE(3093),
 
     // XML
     XML_ELEMENT(4000),

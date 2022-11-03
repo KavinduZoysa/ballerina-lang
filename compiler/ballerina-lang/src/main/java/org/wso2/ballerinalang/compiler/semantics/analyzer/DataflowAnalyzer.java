@@ -34,16 +34,7 @@ import org.wso2.ballerinalang.compiler.diagnostic.BLangDiagnosticLog;
 import org.wso2.ballerinalang.compiler.semantics.analyzer.cyclefind.GlobalVariableRefAnalyzer;
 import org.wso2.ballerinalang.compiler.semantics.model.SymbolEnv;
 import org.wso2.ballerinalang.compiler.semantics.model.SymbolTable;
-import org.wso2.ballerinalang.compiler.semantics.model.symbols.BClientDeclarationSymbol;
-import org.wso2.ballerinalang.compiler.semantics.model.symbols.BConstantSymbol;
-import org.wso2.ballerinalang.compiler.semantics.model.symbols.BInvokableSymbol;
-import org.wso2.ballerinalang.compiler.semantics.model.symbols.BObjectTypeSymbol;
-import org.wso2.ballerinalang.compiler.semantics.model.symbols.BPackageSymbol;
-import org.wso2.ballerinalang.compiler.semantics.model.symbols.BSymbol;
-import org.wso2.ballerinalang.compiler.semantics.model.symbols.BTypeSymbol;
-import org.wso2.ballerinalang.compiler.semantics.model.symbols.BVarSymbol;
-import org.wso2.ballerinalang.compiler.semantics.model.symbols.SymTag;
-import org.wso2.ballerinalang.compiler.semantics.model.symbols.Symbols;
+import org.wso2.ballerinalang.compiler.semantics.model.symbols.*;
 import org.wso2.ballerinalang.compiler.semantics.model.types.BArrayType;
 import org.wso2.ballerinalang.compiler.semantics.model.types.BField;
 import org.wso2.ballerinalang.compiler.semantics.model.types.BMapType;
@@ -78,6 +69,7 @@ import org.wso2.ballerinalang.compiler.tree.BLangTypeDefinition;
 import org.wso2.ballerinalang.compiler.tree.BLangVariable;
 import org.wso2.ballerinalang.compiler.tree.BLangXMLNS;
 import org.wso2.ballerinalang.compiler.tree.OCEDynamicEnvironmentData;
+import org.wso2.ballerinalang.compiler.tree.clauses.BLangCollectClause;
 import org.wso2.ballerinalang.compiler.tree.clauses.BLangDoClause;
 import org.wso2.ballerinalang.compiler.tree.clauses.BLangFromClause;
 import org.wso2.ballerinalang.compiler.tree.clauses.BLangGroupByClause;
@@ -1382,7 +1374,11 @@ public class DataflowAnalyzer extends BLangNodeVisitor {
         this.unusedErrorVarsDeclaredWithVar.remove(varRefExpr.symbol);
 
         if (isNotVariableReferenceLVExpr(varRefExpr)) {
-            this.unusedLocalVariables.remove(varRefExpr.symbol);
+            if (varRefExpr.symbol != null && varRefExpr.symbol.kind == SymbolKind.SEQUENCE) {
+                this.unusedLocalVariables.remove(((BSequenceSymbol) varRefExpr.symbol).originalSymbol);
+            } else {
+                this.unusedLocalVariables.remove(varRefExpr.symbol);
+            }
         }
 
         checkVarRef(varRefExpr.symbol, varRefExpr.pos);
@@ -2213,6 +2209,11 @@ public class DataflowAnalyzer extends BLangNodeVisitor {
     @Override
     public void visit(BLangErrorVariableDef bLangErrorVariableDef) {
         analyzeNode(bLangErrorVariableDef.errorVariable, env);
+    }
+
+    @Override
+    public void visit(BLangCollectClause bLangCollectClause) {
+        analyzeNode(bLangCollectClause.expression, env);
     }
 
     private void addUninitializedVar(BLangVariable variable) {

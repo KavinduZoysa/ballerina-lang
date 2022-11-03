@@ -1604,6 +1604,15 @@ public class STNodeFactory extends STAbstractNodeFactory {
                 expression);
     }
 
+    public static STNode createCollectClauseNode(
+            STNode collectKeyword,
+            STNode expression) {
+
+        return new STCollectClauseNode(
+                collectKeyword,
+                expression);
+    }
+
     public static STNode createQueryExpressionNode(
             STNode queryConstructType,
             STNode queryPipeline,

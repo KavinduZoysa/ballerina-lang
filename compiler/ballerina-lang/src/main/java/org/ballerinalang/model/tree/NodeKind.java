@@ -84,6 +84,7 @@ public enum NodeKind {
     CONSTANT,
     RECORD_LITERAL_EXPR,
     SIMPLE_VARIABLE_REF,
+    SEQUENCE_VARIABLE_REF,
     CONSTANT_REF,
     TUPLE_VARIABLE_REF,
     RECORD_VARIABLE_REF,
@@ -209,6 +210,7 @@ public enum NodeKind {
     GROUP_BY,
     GROUPING_KEY,
     ON_FAIL,
+    COLLECT,
 
     /* Match statement */
     MATCH_CLAUSE,
