@@ -24,6 +24,7 @@ import org.wso2.ballerinalang.compiler.tree.BLangNode;
 import org.wso2.ballerinalang.compiler.tree.BLangNodeAnalyzer;
 import org.wso2.ballerinalang.compiler.tree.BLangNodeTransformer;
 import org.wso2.ballerinalang.compiler.tree.BLangNodeVisitor;
+import org.wso2.ballerinalang.compiler.tree.clauses.BLangCollectClause;
 import org.wso2.ballerinalang.compiler.tree.clauses.BLangSelectClause;
 
 import java.util.ArrayList;
@@ -51,6 +52,17 @@ public class BLangQueryExpr extends BLangExpression implements QueryExpressionNo
         for (BLangNode clause : queryClauseList) {
             if (clause.getKind() == NodeKind.SELECT) {
                 return (BLangSelectClause) clause;
+            }
+        }
+        return null;
+    }
+
+    // TODO: Refactor this properly
+    @Override
+    public BLangCollectClause getCollectClause() {
+        for (BLangNode clause : queryClauseList) {
+            if (clause.getKind() == NodeKind.COLLECT) {
+                return (BLangCollectClause) clause;
             }
         }
         return null;

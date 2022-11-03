@@ -101,6 +101,7 @@ public enum SyntaxKind {
     EQUALS_KEYWORD(246, "equals"),
     CLASS_KEYWORD(247, "class"),
     ORDER_KEYWORD(248, "order"),
+    COLLECT_KEYWORD(248, "collect"),
     BY_KEYWORD(249, "by"),
     ASCENDING_KEYWORD(250, "ascending"),
     DESCENDING_KEYWORD(251, "descending"),
@@ -476,6 +477,7 @@ public enum SyntaxKind {
     SPREAD_MEMBER(3087),
     COMPUTED_RESOURCE_ACCESS_SEGMENT(3088),
     RESOURCE_ACCESS_REST_SEGMENT(3089),
+    COLLECT_CLAUSE(3090),
 
     // XML
     XML_ELEMENT(4000),

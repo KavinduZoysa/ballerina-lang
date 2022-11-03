@@ -543,6 +543,10 @@ public abstract class NodeVisitor {
         visitSyntaxNode(selectClauseNode);
     }
 
+    public void visit(CollectClauseNode collectClauseNode) {
+        visitSyntaxNode(collectClauseNode);
+    }
+
     public void visit(QueryExpressionNode queryExpressionNode) {
         visitSyntaxNode(queryExpressionNode);
     }

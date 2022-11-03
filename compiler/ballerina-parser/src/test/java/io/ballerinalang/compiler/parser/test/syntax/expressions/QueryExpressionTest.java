@@ -281,4 +281,12 @@ public class QueryExpressionTest extends AbstractExpressionsTest {
     public void testQueryWithMapKeyword() {
         test("map from int a in b select e", "query-expr/query_expr_assert_79.json");
     }
+
+    @Test
+    public void testQueryWithCollectKeyword() {
+        testFile("query-expr/query_expr_source_80.bal", "query-expr/query_expr_assert_80.json");
+        testFile("query-expr/query_expr_source_81.bal", "query-expr/query_expr_assert_81.json");
+        testFile("query-expr/query_expr_source_82.bal", "query-expr/query_expr_assert_82.json");
+        testFile("query-expr/query_expr_source_83.bal", "query-expr/query_expr_assert_83.json");
+    }
 }
