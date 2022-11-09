@@ -1764,7 +1764,7 @@ public class Types {
             if (!isInSameVisibilityRegion(lhsFunc.symbol, rhsFunc.symbol)) {
                 return false;
             }
-            
+
             if (Symbols.isRemote(lhsFunc.symbol) != Symbols.isRemote(rhsFunc.symbol)) {
                 return false;
             }
@@ -1910,7 +1910,7 @@ public class Types {
         if (bLangInputClause.varType.tag == TypeTags.SEMANTIC_ERROR || collectionType.tag == OBJECT) {
             return;
         }
-        
+
         BInvokableSymbol iteratorSymbol = (BInvokableSymbol) symResolver.lookupLangLibMethod(collectionType,
                 names.fromString(BLangCompilerConstants.ITERABLE_COLLECTION_ITERATOR_FUNC), env);
         BUnionType nextMethodReturnType =
@@ -2008,7 +2008,7 @@ public class Types {
                     bLangInputClause.nillableResultType = symTable.semanticError;
                     break;
                 }
-                
+
                 BUnionType nextMethodReturnType = getVarTypeFromIterableObject((BObjectType) collectionType);
                 if (nextMethodReturnType != null) {
                     bLangInputClause.resultType = getRecordType(nextMethodReturnType);
@@ -3519,11 +3519,11 @@ public class Types {
                 .filter(rhsFunc -> lhsFunc.funcName.equals(rhsFunc.funcName))
                 .filter(rhsFunc -> isFunctionTypeAssignable(rhsFunc.type, lhsFunc.type, unresolvedTypes))
                 .findFirst();
-        
+
         if (matchingFunction.isEmpty()) {
             return matchingFunction;
         }
-        // For resource function match, we need to check whether lhs function resource path type belongs to 
+        // For resource function match, we need to check whether lhs function resource path type belongs to
         // rhs function resource path type
         BAttachedFunction matchingFunc = matchingFunction.get();
         // Todo: We could include this logic in `isFunctionTypeAssignable` if we have `resourcePathType` information in
@@ -3546,13 +3546,13 @@ public class Types {
         if (lhsFuncResourcePathTypesSize != rhsFuncResourcePathTypes.size()) {
             return Optional.empty();
         }
-        
+
         for (int i = 0; i < lhsFuncResourcePathTypesSize; i++) {
             if (!isAssignable(lhsFuncResourcePathTypes.get(i), rhsFuncResourcePathTypes.get(i))) {
                 return Optional.empty();
             }
         }
-        
+
         return matchingFunction;
     }
 
@@ -7085,6 +7085,7 @@ public class Types {
         boolean queryCompletesEarly = false;
         boolean checkWithinQueryExpr = false;
         HashSet<BType> completeEarlyErrorList = new HashSet<>();
+        boolean isAfterGroupBy = false;
         HashSet<BType> checkedErrorList = new HashSet<>();
         boolean breakToParallelQueryEnv = false;
         int letCount = 0;

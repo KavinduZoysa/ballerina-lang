@@ -38,7 +38,7 @@ public class BLangGroupByClause extends BLangGroupingKey implements GroupByClaus
     public List<BLangGroupingKey> groupingKeyList = new ArrayList<>();
 
     // For caching purposes
-    public List<String> nonGroupingKeyList = new ArrayList<>();
+    public List<BLangSimpleVariable> nonGroupingKeyList = new ArrayList<>();
 
     // Semantic Data
     public SymbolEnv env;

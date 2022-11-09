@@ -803,7 +803,11 @@ public enum DiagnosticErrorCode implements DiagnosticCode {
             "BCE4047", "outer.join.must.be.declared.with.var"),
 
     // group by clause related codes
-    INVALID_GROUPING_KEY("BCE4048", "invalid.grouping.key")
+    INVALID_GROUPING_KEY("BCE4048", "invalid.grouping.key"),
+    UNDEFINED_FUNCTION_IN_SEQUENCE("BCE4049", "undefined.function.in.sequence"),
+    INCOMPATIBLE_TYPE_FOR_SEQUENCE("BCE4050", "incompatible.types.sequence"),
+    INVALID_SEQUENCE_ARGUMENT_IN_FUNCTION("BCE4051", "invalid.sequence.argument.in.function"),
+    SEQUENCE_BINDING_IN_INVALID_CONTEXT("BCE4052", "sequence.binding.in.invalid.context")
     ;
 
     private String diagnosticId;
