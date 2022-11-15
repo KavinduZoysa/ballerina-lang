@@ -354,10 +354,10 @@ public class QueryExpressionTest extends AbstractExpressionsTest {
     }
 
     @Test
-    public void testQueryWithCollectKeyword() {
-        testFile("query-expr/query_expr_source_80.bal", "query-expr/query_expr_assert_80.json");
-        testFile("query-expr/query_expr_source_81.bal", "query-expr/query_expr_assert_81.json");
-        testFile("query-expr/query_expr_source_82.bal", "query-expr/query_expr_assert_82.json");
-        testFile("query-expr/query_expr_source_83.bal", "query-expr/query_expr_assert_83.json");
+    public void testQueryWithCollectClause() {
+        testFile("query-expr/query_expr_source_115.bal", "query-expr/query_expr_assert_115.json");
+        testFile("query-expr/query_expr_source_116.bal", "query-expr/query_expr_assert_116.json");
+        testFile("query-expr/query_expr_source_117.bal", "query-expr/query_expr_assert_117.json");
+        testFile("query-expr/query_expr_source_118.bal", "query-expr/query_expr_assert_118.json");
     }
 }
