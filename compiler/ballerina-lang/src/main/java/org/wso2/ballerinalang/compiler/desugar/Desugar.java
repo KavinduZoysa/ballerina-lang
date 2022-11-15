@@ -124,6 +124,8 @@ import org.wso2.ballerinalang.compiler.tree.bindingpatterns.BLangNamedArgBinding
 import org.wso2.ballerinalang.compiler.tree.bindingpatterns.BLangRestBindingPattern;
 import org.wso2.ballerinalang.compiler.tree.bindingpatterns.BLangSimpleBindingPattern;
 import org.wso2.ballerinalang.compiler.tree.bindingpatterns.BLangWildCardBindingPattern;
+import org.wso2.ballerinalang.compiler.tree.clauses.BLangCollectClause;
+import org.wso2.ballerinalang.compiler.tree.clauses.BLangLetClause;
 import org.wso2.ballerinalang.compiler.tree.clauses.BLangMatchClause;
 import org.wso2.ballerinalang.compiler.tree.clauses.BLangOnFailClause;
 import org.wso2.ballerinalang.compiler.tree.expressions.BLangAccessExpression;
@@ -8426,6 +8428,28 @@ public class Desugar extends BLangNodeVisitor {
     public void visit(BLangQueryExpr queryExpr) {
         boolean prevIsVisitingQuery = this.isVisitingQuery;
         this.isVisitingQuery = true;
+        BLangCollectClause collectClause = queryExpr.getCollectClause();
+        if (collectClause != null && collectClause.expression.getKind() == NodeKind.INVOCATION) {
+            BLangInvocation collectInvocation = (BLangInvocation) collectClause.expression;
+            BLangLetClause bLLetClause = (BLangLetClause) TreeBuilder.createLetClauseNode();
+            bLLetClause.pos = collectClause.pos;
+            if (!collectInvocation.argExprs.isEmpty()) {
+                List<BLangLetVariable> letVars = new ArrayList<>(collectInvocation.argExprs.size());
+                List<BLangExpression> newArgExprs = new ArrayList<>(collectInvocation.argExprs.size());
+                for (int i = 0; i < collectInvocation.argExprs.size(); i++) {
+                    BLangExpression argExpr = collectInvocation.argExprs.get(i);
+                    BLangLetVariable letVar = TreeBuilder.createLetVariableNode();
+                    BLangSimpleVariableDef letVarDef = createVarDef("$collectClauseInvocationArg" + i,
+                            argExpr.getBType(), argExpr, argExpr.pos);
+                    letVar.definitionNode = letVarDef;
+                    letVars.add(letVar);
+                    newArgExprs.add(createVariableRef(letVar.pos, letVarDef.var.symbol));
+                }
+                collectInvocation.argExprs = newArgExprs;
+                bLLetClause.letVarDeclarations = letVars;
+                queryExpr.queryClauseList.add(queryExpr.queryClauseList.size() - 1, bLLetClause);
+            }
+        }
         BLangStatementExpression stmtExpr = queryDesugar.desugar(queryExpr, env, getVisibleXMLNSStmts(env));
         result = rewrite(stmtExpr, env);
         this.isVisitingQuery = prevIsVisitingQuery;

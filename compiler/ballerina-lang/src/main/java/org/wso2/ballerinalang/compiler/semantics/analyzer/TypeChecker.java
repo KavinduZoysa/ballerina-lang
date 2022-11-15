@@ -40,6 +40,7 @@ import org.ballerinalang.model.types.Type;
 import org.ballerinalang.model.types.TypeKind;
 import org.ballerinalang.util.BLangCompilerConstants;
 import org.ballerinalang.util.diagnostic.DiagnosticErrorCode;
+import org.ballerinalang.util.diagnostic.DiagnosticLog;
 import org.ballerinalang.util.diagnostic.DiagnosticWarningCode;
 import org.wso2.ballerinalang.compiler.desugar.ASTBuilderUtil;
 import org.wso2.ballerinalang.compiler.diagnostic.BLangDiagnosticLog;
@@ -60,6 +61,7 @@ import org.wso2.ballerinalang.compiler.semantics.model.symbols.BOperatorSymbol;
 import org.wso2.ballerinalang.compiler.semantics.model.symbols.BPackageSymbol;
 import org.wso2.ballerinalang.compiler.semantics.model.symbols.BRecordTypeSymbol;
 import org.wso2.ballerinalang.compiler.semantics.model.symbols.BResourceFunction;
+import org.wso2.ballerinalang.compiler.semantics.model.symbols.BSequenceSymbol;
 import org.wso2.ballerinalang.compiler.semantics.model.symbols.BSymbol;
 import org.wso2.ballerinalang.compiler.semantics.model.symbols.BTypeSymbol;
 import org.wso2.ballerinalang.compiler.semantics.model.symbols.BVarSymbol;
@@ -76,6 +78,7 @@ import org.wso2.ballerinalang.compiler.semantics.model.types.BInvokableType;
 import org.wso2.ballerinalang.compiler.semantics.model.types.BMapType;
 import org.wso2.ballerinalang.compiler.semantics.model.types.BObjectType;
 import org.wso2.ballerinalang.compiler.semantics.model.types.BRecordType;
+import org.wso2.ballerinalang.compiler.semantics.model.types.BSequenceType;
 import org.wso2.ballerinalang.compiler.semantics.model.types.BStreamType;
 import org.wso2.ballerinalang.compiler.semantics.model.types.BTableType;
 import org.wso2.ballerinalang.compiler.semantics.model.types.BTupleType;
@@ -97,6 +100,7 @@ import org.wso2.ballerinalang.compiler.tree.BLangTableKeySpecifier;
 import org.wso2.ballerinalang.compiler.tree.BLangVariable;
 import org.wso2.ballerinalang.compiler.tree.OCEDynamicEnvironmentData;
 import org.wso2.ballerinalang.compiler.tree.SimpleBLangNodeAnalyzer;
+import org.wso2.ballerinalang.compiler.tree.clauses.BLangCollectClause;
 import org.wso2.ballerinalang.compiler.tree.clauses.BLangDoClause;
 import org.wso2.ballerinalang.compiler.tree.clauses.BLangFromClause;
 import org.wso2.ballerinalang.compiler.tree.clauses.BLangInputClause;
@@ -1037,7 +1041,9 @@ public class TypeChecker extends SimpleBLangNodeAnalyzer<TypeChecker.AnalyzerDat
             return;
         }
 
+        data.sequenceVariableInValidListConstructor = checkSequenceVariableInListCtr(listConstructor, data);
         data.resultType = checkListConstructorCompatibility(expType, listConstructor, data);
+        data.sequenceVariableInValidListConstructor = false;
     }
 
     @Override
@@ -1896,35 +1902,45 @@ public class TypeChecker extends SimpleBLangNodeAnalyzer<TypeChecker.AnalyzerDat
         int listExprSize = 0;
         if (arrayType.state != BArrayState.OPEN) {
             for (BLangExpression expr : listConstructor.exprs) {
-                if (expr.getKind() != NodeKind.LIST_CONSTRUCTOR_SPREAD_OP) {
+                boolean isSequence = isSequenceVarRef(expr, !data.sequenceVariables.isEmpty());
+                if (expr.getKind() != NodeKind.LIST_CONSTRUCTOR_SPREAD_OP && !isSequence) {
                     listExprSize++;
                     continue;
                 }
 
-                BLangExpression spreadOpExpr = ((BLangListConstructorSpreadOpExpr) expr).expr;
-                BType spreadOpType = checkExpr(spreadOpExpr, data);
-                spreadOpType = Types.getReferredType(spreadOpType);
+                BLangExpression sequenceOrSpreadOpExpr;
+                if (isSequence) {
+                    sequenceOrSpreadOpExpr = expr;
+                } else {
+                    sequenceOrSpreadOpExpr = ((BLangListConstructorSpreadOpExpr) expr).expr;
+                }
+                BType sequenceOrSpreadOpType = checkExpr(sequenceOrSpreadOpExpr, data);
+                sequenceOrSpreadOpType = Types.getReferredType(sequenceOrSpreadOpType);
 
-                switch (spreadOpType.tag) {
+                switch (sequenceOrSpreadOpType.tag) {
                     case TypeTags.ARRAY:
-                        int arraySize = ((BArrayType) spreadOpType).size;
+                        int arraySize = ((BArrayType) sequenceOrSpreadOpType).size;
                         if (arraySize >= 0) {
                             listExprSize += arraySize;
                             continue;
                         }
 
-                        dlog.error(spreadOpExpr.pos,
+                        dlog.error(sequenceOrSpreadOpExpr.pos,
                                 DiagnosticErrorCode.INVALID_SPREAD_OP_FIXED_LENGTH_LIST_EXPECTED);
                         return symTable.semanticError;
                     case TypeTags.TUPLE:
-                        BTupleType tType = (BTupleType) spreadOpType;
+                        BTupleType tType = (BTupleType) sequenceOrSpreadOpType;
                         if (types.isFixedLengthTuple(tType)) {
                             listExprSize += tType.tupleTypes.size();
                             continue;
                         }
 
-                        dlog.error(spreadOpExpr.pos,
+                        dlog.error(sequenceOrSpreadOpExpr.pos,
                                 DiagnosticErrorCode.INVALID_SPREAD_OP_FIXED_LENGTH_LIST_EXPECTED);
+                        return symTable.semanticError;
+                    case TypeTags.SEQUENCE:
+                        dlog.error(sequenceOrSpreadOpExpr.pos,
+                                DiagnosticErrorCode.SEQUENCE_VALUE_CANNOT_ASSIGN_TO_FIXED_LENGTH_ARRAY);
                         return symTable.semanticError;
                 }
             }
@@ -1951,44 +1967,100 @@ public class TypeChecker extends SimpleBLangNodeAnalyzer<TypeChecker.AnalyzerDat
 
         boolean errored = false;
         for (BLangExpression expr : listConstructor.exprs) {
-            if (expr.getKind() != NodeKind.LIST_CONSTRUCTOR_SPREAD_OP) {
+            boolean isSequence = isSequenceVarRef(expr, !data.sequenceVariables.isEmpty());
+            if (expr.getKind() != NodeKind.LIST_CONSTRUCTOR_SPREAD_OP && !isSequence) {
                 errored |= exprIncompatible(eType, expr, data);
                 continue;
             }
 
-            BLangExpression spreadOpExpr = ((BLangListConstructorSpreadOpExpr) expr).expr;
-            BType spreadOpType = checkExpr(spreadOpExpr, data);
-            BType spreadOpReferredType = Types.getReferredType(spreadOpType);
+            BLangExpression sequenceOrSpreadOpExpr;
+            if (isSequence) {
+                sequenceOrSpreadOpExpr = expr;
+            } else {
+                sequenceOrSpreadOpExpr = ((BLangListConstructorSpreadOpExpr) expr).expr;
+            }
+            BType sequenceOrSpreadOpType = checkExpr(sequenceOrSpreadOpExpr, data);
+            BType sequenceOrSpreadOpReferredType = Types.getReferredType(sequenceOrSpreadOpType);
 
-            switch (spreadOpReferredType.tag) {
+            switch (sequenceOrSpreadOpReferredType.tag) {
                 case TypeTags.ARRAY:
-                    BType spreadOpeType = ((BArrayType) spreadOpReferredType).eType;
-                    if (types.typeIncompatible(spreadOpExpr.pos, spreadOpeType, eType)) {
+                    BType spreadOpeType = ((BArrayType) sequenceOrSpreadOpReferredType).eType;
+                    if (types.typeIncompatible(sequenceOrSpreadOpExpr.pos, spreadOpeType, eType)) {
                         return symTable.semanticError;
                     }
                     break;
                 case TypeTags.TUPLE:
-                    BTupleType spreadOpTuple = (BTupleType) spreadOpReferredType;
+                    BTupleType spreadOpTuple = (BTupleType) sequenceOrSpreadOpReferredType;
                     List<BType> tupleTypes = spreadOpTuple.tupleTypes;
                     for (BType tupleMemberType : tupleTypes) {
-                        if (types.typeIncompatible(spreadOpExpr.pos, tupleMemberType, eType)) {
+                        if (types.typeIncompatible(sequenceOrSpreadOpExpr.pos, tupleMemberType, eType)) {
                             return symTable.semanticError;
                         }
                     }
 
                     if (!types.isFixedLengthTuple(spreadOpTuple)) {
-                        if (types.typeIncompatible(spreadOpExpr.pos, spreadOpTuple.restType, eType)) {
+                        if (types.typeIncompatible(sequenceOrSpreadOpExpr.pos, spreadOpTuple.restType, eType)) {
                             return symTable.semanticError;
                         }
                     }
                     break;
+                case TypeTags.SEQUENCE:
+                    if (types.typeIncompatible(sequenceOrSpreadOpExpr.pos,
+                            ((BSequenceType) sequenceOrSpreadOpReferredType).elementType, eType)) {
+                        return symTable.semanticError;
+                    }
+                    break;
                 default:
-                    dlog.error(spreadOpExpr.pos, DiagnosticErrorCode.INCOMPATIBLE_TYPES_LIST_SPREAD_OP, spreadOpType);
+                    dlog.error(sequenceOrSpreadOpExpr.pos, DiagnosticErrorCode.INCOMPATIBLE_TYPES_LIST_SPREAD_OP,
+                            sequenceOrSpreadOpType);
                     return symTable.semanticError;
             }
         }
 
         return errored ? symTable.semanticError : arrayType;
+    }
+
+    private boolean isSequenceVarRef(BLangExpression expr, boolean isInCollectClause) {
+        return expr.getKind() == NodeKind.SIMPLE_VARIABLE_REF && isInCollectClause;
+    }
+
+    private boolean checkSequenceVariableInListCtr(BLangListConstructorExpr listCtrExpr, AnalyzerData data) {
+        if (listCtrExpr.exprs.size() != 1 || data.sequenceVariables.isEmpty()) {
+            return false;
+        }
+        return checkSequenceVariableInListCtr(listCtrExpr.exprs.get(0), data.sequenceVariables);
+    }
+
+    private boolean checkSequenceVariableInListCtr(BLangExpression expr, Set<Name> sequenceVariables) {
+        NodeKind kind = expr.getKind();
+        if (kind == NodeKind.SIMPLE_VARIABLE_REF) {
+            return sequenceVariables.contains(new Name(((BLangSimpleVarRef) expr).getVariableName().value));
+        } else if (kind == NodeKind.GROUP_EXPR) {
+            return checkSequenceVariableInListCtr(((BLangGroupExpr) expr).expression, sequenceVariables);
+        } else {
+            return false;
+        }
+    }
+
+    private boolean checkSequenceVarRef(BLangExpression expr, Set<Name> sequenceVariables) {
+        return !sequenceVariables.isEmpty() && containsSequenceVarRef(expr, sequenceVariables);
+    }
+
+    private boolean containsSequenceVarRef(BLangExpression expr, Set<Name> sequenceVariables) {
+        NodeKind kind = expr.getKind();
+        if (kind == NodeKind.SIMPLE_VARIABLE_REF) {
+            return sequenceVariables.contains(new Name(((BLangSimpleVarRef) expr).getVariableName().value));
+        } else if (kind == NodeKind.GROUP_EXPR) {
+            return containsSequenceVarRef(((BLangGroupExpr) expr).expression, sequenceVariables);
+        } else if (kind == NodeKind.BINARY_EXPR) {
+            BLangBinaryExpr binaryExpr = (BLangBinaryExpr) expr;
+            if (containsSequenceVarRef(binaryExpr.lhsExpr, sequenceVariables)) {
+                return true;
+            }
+            return containsSequenceVarRef(binaryExpr.rhsExpr, sequenceVariables);
+        } else {
+            return false;
+        }
     }
 
     private BType checkTupleType(BLangListConstructorExpr listConstructor, BTupleType tupleType, AnalyzerData data) {
@@ -2865,10 +2937,16 @@ public class TypeChecker extends SimpleBLangNodeAnalyzer<TypeChecker.AnalyzerDat
             // TODO: call to isInLocallyDefinedRecord() is a temporary fix done to disallow local var references in
             //  locally defined record type defs. This check should be removed once local var referencing is supported.
             if (((symbol.tag & SymTag.VARIABLE) == SymTag.VARIABLE)) {
-                BVarSymbol varSym = (BVarSymbol) symbol;
-                checkSelfReferences(varRefExpr.pos, data.env, varSym);
-                varRefExpr.symbol = varSym;
-                actualType = varSym.type;
+                if (symbol.kind == SymbolKind.SEQUENCE) {
+                    if (!data.sequenceVariableInInvocation && !data.sequenceVariableInValidListConstructor) {
+                        dlog.error(varRefExpr.pos, DiagnosticErrorCode.SEQUENCE_VARIABLE_IN_INVALID_CONTEXT);
+                    }
+                } else {
+                    BVarSymbol varSym = (BVarSymbol) symbol;
+                    checkSelfReferences(varRefExpr.pos, data.env, varSym);
+                }
+                varRefExpr.symbol = symbol;
+                actualType = symbol.type;
                 markAndRegisterClosureVariable(symbol, varRefExpr.pos, data.env, data);
             } else if ((symbol.tag & SymTag.TYPE_DEF) == SymTag.TYPE_DEF) {
                 actualType = symbol.type.tag == TypeTags.TYPEDESC ? symbol.type : new BTypedescType(symbol.type, null);
@@ -4916,6 +4994,9 @@ public class TypeChecker extends SimpleBLangNodeAnalyzer<TypeChecker.AnalyzerDat
         } else {
             lhsType = checkExpr(binaryExpr.lhsExpr, data);
         }
+        if (data.sequenceVariableInInvocation && lhsType.tag == TypeTags.SEQUENCE) {
+            lhsType = ((BSequenceType) lhsType).elementType;
+        }
 
         if (binaryExpr.opKind == OperatorKind.AND) {
             rhsExprEnv = typeNarrower.evaluateTruth(binaryExpr.lhsExpr, binaryExpr.rhsExpr, data.env, true);
@@ -4932,6 +5013,9 @@ public class TypeChecker extends SimpleBLangNodeAnalyzer<TypeChecker.AnalyzerDat
             rhsType = checkAndGetType(binaryExpr.rhsExpr, rhsExprEnv, binaryExpr, data);
         } else {
             rhsType = checkExpr(binaryExpr.rhsExpr, rhsExprEnv, data);
+        }
+        if (data.sequenceVariableInInvocation && rhsType.tag == TypeTags.SEQUENCE) {
+            rhsType = ((BSequenceType) rhsType).elementType;
         }
 
         // Set error type as the actual type.
@@ -6043,13 +6127,31 @@ public class TypeChecker extends SimpleBLangNodeAnalyzer<TypeChecker.AnalyzerDat
             typeCheckerData.queryEnvs.push(data.env);
             data.prevEnvs.push(data.env);
         }
-        typeCheckerData.queryFinalClauses.push(queryExpr.getSelectClause());
+        // TODO: Refactor this
+        boolean isFinalClauseSelect = queryExpr.getSelectClause() != null;
+        if (isFinalClauseSelect) {
+            typeCheckerData.queryFinalClauses.push(queryExpr.getSelectClause());
+        } else {
+            typeCheckerData.queryFinalClauses.push(queryExpr.getCollectClause());
+        }
         List<BLangNode> clauses = queryExpr.getQueryClauses();
         BLangExpression collectionNode = (BLangExpression) ((BLangFromClause) clauses.get(0)).getCollection();
         clauses.forEach(clause -> clause.accept(this, data));
-        BType actualType = resolveQueryType(typeCheckerData.queryEnvs.peek(),
-                                            ((BLangSelectClause) typeCheckerData.queryFinalClauses.peek()).expression,
-                                            collectionNode.getBType(), data.expType, queryExpr, data);
+
+        BLangExpression finalClauseExpr;
+        if (isFinalClauseSelect) {
+            finalClauseExpr = ((BLangSelectClause) typeCheckerData.queryFinalClauses.peek()).expression;
+        } else {
+            finalClauseExpr = ((BLangCollectClause) typeCheckerData.queryFinalClauses.peek()).expression;
+        }
+        BType actualType;
+        if (isFinalClauseSelect) {
+            actualType = resolveQueryType(typeCheckerData.queryEnvs.peek(), finalClauseExpr, collectionNode.getBType(),
+                    data.expType, queryExpr, data);
+        } else {
+            actualType = checkExpr(finalClauseExpr, typeCheckerData.queryEnvs.peek(), data.expType, data);
+            data.sequenceVariables.clear();
+        }
         actualType = (actualType == symTable.semanticError) ? actualType :
                 types.checkType(queryExpr.pos, actualType, data.expType, DiagnosticErrorCode.INCOMPATIBLE_TYPES);
         typeCheckerData.queryFinalClauses.pop();
@@ -6142,6 +6244,7 @@ public class TypeChecker extends SimpleBLangNodeAnalyzer<TypeChecker.AnalyzerDat
                                        BType collectionType, List<BType> selectTypes, List<BType> resolvedTypes,
                                        SymbolEnv env, AnalyzerData data, boolean isReadonly,
                                        LinkedHashSet<BType> memberTypes) {
+        // TODO: Remove `LinkedHashSet<BType> memberTypes`
         BType selectType, resolvedType;
         type = Types.getReferredType(type);
         switch (type.tag) {
@@ -6481,6 +6584,36 @@ public class TypeChecker extends SimpleBLangNodeAnalyzer<TypeChecker.AnalyzerDat
                 data.commonAnalyzerData.queryEnvs.pop());
         selectClause.env = selectEnv;
         data.commonAnalyzerData.queryEnvs.push(selectEnv);
+    }
+
+    @Override
+    public void visit(BLangCollectClause collectClause, AnalyzerData data) {
+        SymbolEnv collectEnv = SymbolEnv.createTypeNarrowedEnv(collectClause, data.commonAnalyzerData.queryEnvs.pop());
+        defineSequenceSymbolsInCollectEnv(collectEnv, data.sequenceVariables);
+        collectClause.env = collectEnv;
+        data.commonAnalyzerData.queryEnvs.push(collectEnv);
+    }
+
+    private void defineSequenceSymbolsInCollectEnv(SymbolEnv collectEnv, Set<Name> sequenceVariables) {
+        SymbolEnv env = collectEnv.enclEnv;
+        while (true) {
+            for (var entry : env.scope.entries.entrySet()) {
+                Name name = entry.getKey();
+                BSymbol symbol = entry.getValue().symbol;
+                if (symbol.kind == SymbolKind.VARIABLE) {
+                    BSequenceSymbol sequenceSymbol = new BSequenceSymbol(SymTag.VARIABLE,
+                            Flags.asMask(new HashSet<>(Lists.of())), name, symbol.pkgID,
+                            new BSequenceType(symbol.getType()), symbol.owner, symbol.pos);
+                    sequenceSymbol.originalSymbol = symbol;
+                    collectEnv.scope.define(name, sequenceSymbol);
+                    sequenceVariables.add(name);
+                }
+            }
+            if (env.node.getKind() == NodeKind.FROM) {
+                break;
+            }
+            env = env.enclEnv;
+        }
     }
 
     @Override
@@ -6931,6 +7064,25 @@ public class TypeChecker extends SimpleBLangNodeAnalyzer<TypeChecker.AnalyzerDat
             }
         }
 
+        if (!data.sequenceVariables.isEmpty()) {
+            if (funcSymbol == symTable.notFoundSymbol) {
+                if (iExpr.argExprs.size() >= 1) {
+                    BLangExpression firstArg = iExpr.argExprs.get(0);
+                    data.sequenceVariableInInvocation = checkSequenceVarRef(firstArg, data.sequenceVariables);
+                    BType firstArType = checkExpr(firstArg, data);
+                    data.sequenceVariableInInvocation = false;
+                    if (firstArType.tag == TypeTags.SEQUENCE) {
+                        firstArType = ((BSequenceType) firstArType).elementType;
+                    }
+                    funcSymbol = symResolver.lookupLangLibMethod(firstArType, funcName, data.env);
+                }
+            } else {
+                if (!Symbols.isFlagOn(funcSymbol.flags, Flags.LANG_LIB)) {
+                    dlog.error(iExpr.pos, DiagnosticErrorCode.USER_DEFINED_FUNCTIONS_NOT_ALLOWED_IN_COLLECT);
+                }
+            }
+        }
+        // Symbols.isFlagOn(funcSymbol.flags, Flags.LANG_LIB)
         if (funcSymbol == symTable.notFoundSymbol || isNotFunction(funcSymbol)) {
             if (!missingNodesHelper.isMissingNode(funcName)) {
                 dlog.error(iExpr.pos, DiagnosticErrorCode.UNDEFINED_FUNCTION, funcName);
@@ -7418,6 +7570,7 @@ public class TypeChecker extends SimpleBLangNodeAnalyzer<TypeChecker.AnalyzerDat
         int i = 0;
         BLangExpression vararg = null;
         boolean foundNamedArg = false;
+        boolean foundSequenceArg = false;
         for (BLangExpression expr : iExpr.argExprs) {
             switch (expr.getKind()) {
                 case NAMED_ARGS_EXPR:
@@ -7434,12 +7587,26 @@ public class TypeChecker extends SimpleBLangNodeAnalyzer<TypeChecker.AnalyzerDat
                     if (foundNamedArg) {
                         dlog.error(expr.pos, DiagnosticErrorCode.REST_ARG_DEFINED_AFTER_NAMED_ARG);
                         continue;
+                    } else if (foundSequenceArg) {
+                        dlog.error(expr.pos, DiagnosticErrorCode.ARG_NOT_ALLOWED_AFTER_SEQUENCE_ARG);
+                        continue;
                     }
                     vararg = expr;
                     break;
                 default: // positional args
                     if (foundNamedArg) {
                         dlog.error(expr.pos, DiagnosticErrorCode.POSITIONAL_ARG_DEFINED_AFTER_NAMED_ARG);
+                    } else if (foundSequenceArg) {
+                        dlog.error(expr.pos, DiagnosticErrorCode.ARG_NOT_ALLOWED_AFTER_SEQUENCE_ARG);
+                        continue;
+                    }
+                    foundSequenceArg = checkSequenceVarRef(expr, data.sequenceVariables);
+                    if (foundSequenceArg) {
+                        if (expr.getKind() == NodeKind.SIMPLE_VARIABLE_REF) {
+                            // This can be considered as rest arg
+                            vararg = expr;
+                            continue;
+                        }
                     }
                     if (i < parameterCountForPositionalArgs) {
                         iExpr.requiredArgs.add(expr);
@@ -7660,14 +7827,19 @@ public class TypeChecker extends SimpleBLangNodeAnalyzer<TypeChecker.AnalyzerDat
             BType elementType = ((BArrayType) listTypeRestArg).eType;
 
             for (BLangExpression restArg : iExpr.restArgs) {
+                data.sequenceVariableInInvocation = checkSequenceVarRef(restArg, data.sequenceVariables);
                 checkTypeParamExpr(restArg, elementType, true, data);
+                data.sequenceVariableInInvocation = false;
             }
 
+            data.sequenceVariableInInvocation = checkSequenceVarRef(vararg, data.sequenceVariables);
             checkTypeParamExpr(vararg, listTypeRestArg, iExpr.langLibInvocation, data);
+            data.sequenceVariableInInvocation = false;
             iExpr.restArgs.add(vararg);
             restType = data.resultType;
         } else if (vararg != null) {
             iExpr.restArgs.add(vararg);
+            data.sequenceVariableInInvocation = checkSequenceVarRef(vararg, data.sequenceVariables);
             if (mappingTypeRestArg != null) {
                 LinkedHashSet<BType> restTypes = new LinkedHashSet<>();
                 restTypes.add(listTypeRestArg);
@@ -7677,12 +7849,15 @@ public class TypeChecker extends SimpleBLangNodeAnalyzer<TypeChecker.AnalyzerDat
             } else {
                 checkTypeParamExpr(vararg, listTypeRestArg, iExpr.langLibInvocation, data);
             }
+            data.sequenceVariableInInvocation = false;
             restType = data.resultType;
         } else if (!iExpr.restArgs.isEmpty()) {
             if (listTypeRestArg.tag == TypeTags.ARRAY) {
                 BType elementType = ((BArrayType) listTypeRestArg).eType;
                 for (BLangExpression restArg : iExpr.restArgs) {
+                    data.sequenceVariableInInvocation = checkSequenceVarRef(restArg, data.sequenceVariables);
                     checkTypeParamExpr(restArg, elementType, true, data);
+                    data.sequenceVariableInInvocation = false;
                     if (restType != symTable.semanticError && data.resultType == symTable.semanticError) {
                         restType = data.resultType;
                     }
@@ -9994,5 +10169,8 @@ public class TypeChecker extends SimpleBLangNodeAnalyzer<TypeChecker.AnalyzerDat
         BType expType;
         BType resultType;
         boolean isResourceAccessPathSegments = false;
+        boolean sequenceVariableInInvocation = false;
+        boolean sequenceVariableInValidListConstructor = false;
+        Set<Name> sequenceVariables = new HashSet<>();
     }
 }
