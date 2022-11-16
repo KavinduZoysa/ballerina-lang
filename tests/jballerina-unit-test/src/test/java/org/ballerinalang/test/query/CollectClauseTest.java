@@ -46,7 +46,7 @@ public class CollectClauseTest {
     public void testNegativeCases() {
         int i = 0;
         validateError(negativeResult, i++, "incompatible types: expected 'int', found '[int[]]'", 19, 25);
-        validateError(negativeResult, i++, "incompatible types: expected 'string', found 'int[]'", 21, 30);
+        validateError(negativeResult, i++, "incompatible types: expected 'string', found 'int'", 21, 30);
         validateError(negativeResult, i++, "incompatible types: expected 'string', found 'int'", 26, 29);
         validateError(negativeResult, i++, "incompatible types: expected 'int[]', found 'int'", 28, 29);
         validateError(negativeResult, i++, "incompatible types: expected 'int[]', found 'string[]'", 33, 33);
@@ -58,7 +58,8 @@ public class CollectClauseTest {
         validateError(negativeResult, i++, "incompatible types: expected 'int', found '[int[]]'", 48, 46);
 //        validateError(negativeResult, i++, "sequence variable in invalid context", 46, 25);
 //        validateError(negativeResult, i++, "incompatible types: expected 'int', found '[seq int]'", 48, 46);
-//        validateError(negativeResult, i++, "arguments not allowed after sequence argument", 53, 41);
+        validateError(negativeResult, i++, "arguments not allowed after sequence binding argument", 53, 25);
+        validateError(negativeResult, i++, "incompatible types: expected 'int', found 'int[]'", 53, 41);
         validateError(negativeResult, i++, "arguments not allowed after sequence binding argument", 57, 25);
 //        validateError(negativeResult, i++, "arguments not allowed after sequence argument", 61, 41);
 //        validateError(negativeResult, i++, "arguments not allowed after sequence argument", 64, 49);
@@ -90,7 +91,8 @@ public class CollectClauseTest {
     public Object[] dataToTestCollectClause() {
         return new Object[]{
                 "testInvocationAsCollectExpression",
-                "testUnqualifiedInvocationAsCollectExpression"
+                "testUnqualifiedInvocationAsCollectExpression",
+                "testListCtrAsCollectExpression"
         };
     }
 }

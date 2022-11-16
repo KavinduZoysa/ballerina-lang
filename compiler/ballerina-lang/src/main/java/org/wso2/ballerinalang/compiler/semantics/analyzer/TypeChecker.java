@@ -1007,10 +1007,20 @@ public class TypeChecker extends SimpleBLangNodeAnalyzer<TypeChecker.AnalyzerDat
 
     @Override
     public void visit(BLangListConstructorExpr listConstructor, AnalyzerData data) {
-         AnalyzerData.SEQUENCE_CONTEXT currentContext  = data.sequenceContext;
+        AnalyzerData.SEQUENCE_CONTEXT prevContext  = data.sequenceContext;
         data.sequenceContext = AnalyzerData.SEQUENCE_CONTEXT.LIST_CONSTRUCTOR_CONTEXT;
         BType expType = data.expType;
         if (expType.tag == TypeTags.NONE || expType.tag == TypeTags.READONLY) {
+            for (BLangExpression expr : listConstructor.exprs) {
+                if (expr.getKind() == NodeKind.SIMPLE_VARIABLE_REF) {
+                    BSymbol exprSymbl = getSequenceSymbol((BLangSimpleVarRef) expr, data);
+                    if (exprSymbl.tag == SymTag.SEQUENCE) {
+                        dlog.error(expr.pos, DiagnosticErrorCode.SEQUENCE_BINDING_CONTEXT_NOT_SUPPORTED);
+                        data.resultType = symTable.semanticError;
+                        return;
+                    }
+                }
+            }
             BType inferredType = getInferredTupleType(listConstructor, expType, data);
             data.resultType = inferredType == symTable.semanticError ?
                     symTable.semanticError : types.checkType(listConstructor, inferredType, expType);
@@ -1018,7 +1028,7 @@ public class TypeChecker extends SimpleBLangNodeAnalyzer<TypeChecker.AnalyzerDat
         }
 
         data.resultType = checkListConstructorCompatibility(expType, listConstructor, data);
-        data.sequenceContext = currentContext;
+        data.sequenceContext = prevContext;
     }
 
     @Override
@@ -1898,9 +1908,9 @@ public class TypeChecker extends SimpleBLangNodeAnalyzer<TypeChecker.AnalyzerDat
                     spreadOpType = checkExpr(spreadOpExpr, data);
                     spreadOpType = Types.getReferredType(spreadOpType);
                 } else {
+                    // To handle non grouping keys with sequence binding
                     spreadOpExpr = expr;
                     spreadOpType = checkExpr(expr, data);
-                    spreadOpType = new BArrayType(spreadOpType);
                 }
 
                 switch (spreadOpType.tag) {
@@ -1949,14 +1959,29 @@ public class TypeChecker extends SimpleBLangNodeAnalyzer<TypeChecker.AnalyzerDat
 
         boolean errored = false;
         for (BLangExpression expr : listConstructor.exprs) {
-            if (expr.getKind() != NodeKind.LIST_CONSTRUCTOR_SPREAD_OP) {
+
+            BSymbol exprSymbol = expr.getKind() ==
+                    NodeKind.SIMPLE_VARIABLE_REF ?
+                    getSequenceSymbol((BLangSimpleVarRef) expr, data) : symTable.notFoundSymbol;
+
+            if (expr.getKind() != NodeKind.LIST_CONSTRUCTOR_SPREAD_OP && exprSymbol.tag != SymTag.SEQUENCE) {
                 errored |= exprIncompatible(eType, expr, data);
                 continue;
             }
 
-            BLangExpression spreadOpExpr = ((BLangListConstructorSpreadOpExpr) expr).expr;
-            BType spreadOpType = checkExpr(spreadOpExpr, data);
-            BType spreadOpReferredType = Types.getReferredType(spreadOpType);
+            BType spreadOpType;
+            BLangExpression spreadOpExpr;
+            BType spreadOpReferredType;
+            if (expr.getKind() == NodeKind.LIST_CONSTRUCTOR_SPREAD_OP) {
+                spreadOpExpr = ((BLangListConstructorSpreadOpExpr) expr).expr;
+                spreadOpType = checkExpr(spreadOpExpr, data);
+                spreadOpReferredType = Types.getReferredType(spreadOpType);
+            } else {
+                // To handle non grouping keys with sequence binding
+                spreadOpExpr = expr;
+                spreadOpType = checkExpr(spreadOpExpr, data);
+                spreadOpReferredType = Types.getReferredType(spreadOpType);
+            }
 
             switch (spreadOpReferredType.tag) {
                 case TypeTags.ARRAY:
@@ -7049,7 +7074,7 @@ public class TypeChecker extends SimpleBLangNodeAnalyzer<TypeChecker.AnalyzerDat
     }
 
     public void checkSelfReferences(Location pos, SymbolEnv env, BSequenceSymbol seqSymbol) {
-        if (env.enclVarSym.equals(seqSymbol)) {
+        if (env.enclVarSym == seqSymbol) {
             dlog.error(pos, DiagnosticErrorCode.SELF_REFERENCE_VAR, seqSymbol.name);
         }
     }
@@ -7702,7 +7727,7 @@ public class TypeChecker extends SimpleBLangNodeAnalyzer<TypeChecker.AnalyzerDat
                         }
 
                         // If symbol tag is sequence it is a non grouping key and should e modeled like a rest arg
-                        if (argSymbol.tag == SymTag.SEQUENCE) {
+                        if (argSymbol.tag == SymTag.SEQUENCE && vararg == null) {
                             if (foundNamedArg) {
                                 dlog.error(expr.pos, DiagnosticErrorCode.REST_ARG_DEFINED_AFTER_NAMED_ARG);
                                 continue;
@@ -7933,6 +7958,8 @@ public class TypeChecker extends SimpleBLangNodeAnalyzer<TypeChecker.AnalyzerDat
                 dlog.error(iExpr.pos, DiagnosticErrorCode.SEQUENCE_BINDING_FOLLOWED_BY_ANOTHER_ARG);
             }
 
+            AnalyzerData.SEQUENCE_CONTEXT prevContext = data.sequenceContext;
+            data.sequenceContext = AnalyzerData.SEQUENCE_CONTEXT.FUNCTION_CONTEXT;
             for (BLangExpression restArg : iExpr.restArgs) {
                 checkTypeParamExpr(restArg, elementType, true, data);
             }
@@ -7940,8 +7967,8 @@ public class TypeChecker extends SimpleBLangNodeAnalyzer<TypeChecker.AnalyzerDat
             checkTypeParamExpr(vararg, listTypeRestArg, iExpr.langLibInvocation, data);
             iExpr.restArgs.add(vararg);
             restType = data.resultType;
+            data.sequenceContext = prevContext;
         } else if (vararg != null) {
-            // All non grouping keys will follow this path
             AnalyzerData.SEQUENCE_CONTEXT prevContext = data.sequenceContext;
             data.sequenceContext = AnalyzerData.SEQUENCE_CONTEXT.FUNCTION_CONTEXT;
             iExpr.restArgs.add(vararg);

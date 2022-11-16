@@ -49,8 +49,8 @@ function testInvalidExpressions1() {
 }
 
 function testInvalidArgOrder() {
-//     int _ = from var {salary, bonus} in [{salary: 2, bonus: 1}, {salary: 4, bonus: 2}]
-//                 collect int:sum(salary, bonus); // error
+    int _ = from var {salary, bonus} in [{salary: 2, bonus: 1}, {salary: 4, bonus: 2}]
+                collect int:sum(salary, bonus); // error
 
     int i = 2;
     int _ = from var {salary, bonus} in [{salary: 2, bonus: 1}, {salary: 4, bonus: 2}]

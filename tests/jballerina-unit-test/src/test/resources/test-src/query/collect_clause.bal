@@ -35,12 +35,11 @@ function testUnqualifiedInvocationAsCollectExpression() {
     assertEquality(x1, 6);
 }
 
-// function testListCtrAsCollectExpression() {
-//     (record {| int[] x; |})[] rec = from var {x, y} in [{"x":2, "y":3}, {"x":4, "y":5}]
-//                                     group by var _ = true
-//                                     select { x: [x] };
-//     assertEquality(rec, [{"x":[2,4]}]);
-// }
+function testListCtrAsCollectExpression() {
+    record {| int[] x; |} rec = from var {x, y} in [{"x":2, "y":3}, {"x":4, "y":5}]
+                                    collect { x: [x] };
+    assertEquality(rec.toString(), "{\"x\":[2,4]}");
+}
 
 function assertEquality(any|error expected, any|error actual) {
     if expected is anydata && actual is anydata && expected == actual {
