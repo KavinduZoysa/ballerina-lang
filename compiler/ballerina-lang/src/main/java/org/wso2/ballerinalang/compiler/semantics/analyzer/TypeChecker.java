@@ -70,6 +70,7 @@ import org.wso2.ballerinalang.compiler.semantics.model.types.BUnionType;
 import org.wso2.ballerinalang.compiler.semantics.model.types.BXMLSubType;
 import org.wso2.ballerinalang.compiler.semantics.model.types.BXMLType;
 import org.wso2.ballerinalang.compiler.tree.*;
+import org.wso2.ballerinalang.compiler.tree.clauses.BLangCollectClause;
 import org.wso2.ballerinalang.compiler.tree.clauses.BLangDoClause;
 import org.wso2.ballerinalang.compiler.tree.clauses.BLangFromClause;
 import org.wso2.ballerinalang.compiler.tree.clauses.BLangGroupByClause;
@@ -6119,13 +6120,28 @@ public class TypeChecker extends SimpleBLangNodeAnalyzer<TypeChecker.AnalyzerDat
             typeCheckerData.queryEnvs.push(data.env);
             data.prevEnvs.push(data.env);
         }
-        typeCheckerData.queryFinalClauses.push(queryExpr.getSelectClause());
+
+        boolean isFinalClauseSelect = queryExpr.getSelectClause() != null;
+        if (isFinalClauseSelect) {
+            typeCheckerData.queryFinalClauses.push(queryExpr.getSelectClause());
+        } else {
+            typeCheckerData.queryFinalClauses.push(queryExpr.getCollectClause());
+        }
         List<BLangNode> clauses = queryExpr.getQueryClauses();
         clauses.forEach(clause -> clause.accept(this, data));
 
-        BType actualType = resolveQueryType(typeCheckerData.queryEnvs.peek(),
-                ((BLangSelectClause) typeCheckerData.queryFinalClauses.peek()).expression,
-                data.expType, queryExpr, clauses, data);
+        BType actualType;
+        if (isFinalClauseSelect) {
+            actualType = resolveQueryType(typeCheckerData.queryEnvs.peek(),
+                    ((BLangSelectClause) typeCheckerData.queryFinalClauses.peek()).expression,
+                    data.expType, queryExpr, clauses, data);
+        } else {
+            data.commonAnalyzerData.withinCollectClause = true;
+            actualType = checkExpr(((BLangCollectClause) typeCheckerData.queryFinalClauses.peek()).expression, typeCheckerData.queryEnvs.peek(), data.expType, data);
+            data.commonAnalyzerData.withinCollectClause = false;
+//            data.sequenceVariables.clear();
+        }
+
         actualType = (actualType == symTable.semanticError) ? actualType :
                 types.checkType(queryExpr.pos, actualType, data.expType, DiagnosticErrorCode.INCOMPATIBLE_TYPES);
         typeCheckerData.queryFinalClauses.pop();
@@ -6591,6 +6607,36 @@ public class TypeChecker extends SimpleBLangNodeAnalyzer<TypeChecker.AnalyzerDat
                 data.commonAnalyzerData.queryEnvs.pop());
         selectClause.env = selectEnv;
         data.commonAnalyzerData.queryEnvs.push(selectEnv);
+    }
+
+    @Override
+    public void visit(BLangCollectClause collectClause, AnalyzerData data) {
+        SymbolEnv collectEnv = SymbolEnv.createTypeNarrowedEnv(collectClause, data.commonAnalyzerData.queryEnvs.pop());
+//        defineSequenceSymbolsInCollectEnv(collectEnv, data.sequenceVariables);
+        defineSequenceSymbolsInCollectEnv(collectEnv, null);
+        collectClause.env = collectEnv;
+        data.commonAnalyzerData.queryEnvs.push(collectEnv);
+    }
+    private void defineSequenceSymbolsInCollectEnv(SymbolEnv collectEnv, Set<Name> sequenceVariables) {
+        SymbolEnv env = collectEnv.enclEnv;
+        while (true) {
+            for (var entry : env.scope.entries.entrySet()) {
+                Name name = entry.getKey();
+                BSymbol symbol = entry.getValue().symbol;
+                if (symbol.kind == SymbolKind.VARIABLE) {
+                    BSequenceSymbol sequenceSymbol = new BSequenceSymbol(SymTag.SEQUENCE,
+                            Flags.asMask(new HashSet<>(Lists.of())), name, symbol.pkgID,
+                            new BArrayType(symbol.type), symbol.owner, symbol.pos);
+//                    sequenceSymbol.originalSymbol = symbol;
+                    collectEnv.scope.define(name, sequenceSymbol);
+//                    sequenceVariables.add(name);
+                }
+            }
+            if (env.node.getKind() == NodeKind.FROM) {
+                break;
+            }
+            env = env.enclEnv;
+        }
     }
 
     @Override
@@ -7172,8 +7218,9 @@ public class TypeChecker extends SimpleBLangNodeAnalyzer<TypeChecker.AnalyzerDat
 
             // We come here only if functions without expr or prefix exists. ex: sum(price2)
             // Then we check if function is defined inside the langlib if it occurs after a group by clause.
-            if (funcSymbol == symTable.notFoundSymbol && data.commonAnalyzerData.isAfterGroupBy &&
-                    !iExpr.argExprs.isEmpty() && isSSequenceBindingInArgList(iExpr, data)) {
+            if (funcSymbol == symTable.notFoundSymbol && (data.commonAnalyzerData.isAfterGroupBy
+                    || data.commonAnalyzerData.withinCollectClause) && !iExpr.argExprs.isEmpty() &&
+                    isSSequenceBindingInArgList(iExpr, data)) {
                 BLangExpression firstArgInExpr = iExpr.argExprs.iterator().next();
                 BType typeOfFirstArg;
                 BSymbol argSymbol = symTable.notFoundSymbol;

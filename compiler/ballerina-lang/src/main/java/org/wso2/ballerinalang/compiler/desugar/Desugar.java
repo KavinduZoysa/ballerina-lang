@@ -120,8 +120,7 @@ import org.wso2.ballerinalang.compiler.tree.bindingpatterns.BLangNamedArgBinding
 import org.wso2.ballerinalang.compiler.tree.bindingpatterns.BLangRestBindingPattern;
 import org.wso2.ballerinalang.compiler.tree.bindingpatterns.BLangSimpleBindingPattern;
 import org.wso2.ballerinalang.compiler.tree.bindingpatterns.BLangWildCardBindingPattern;
-import org.wso2.ballerinalang.compiler.tree.clauses.BLangMatchClause;
-import org.wso2.ballerinalang.compiler.tree.clauses.BLangOnFailClause;
+import org.wso2.ballerinalang.compiler.tree.clauses.*;
 import org.wso2.ballerinalang.compiler.tree.expressions.BLangAccessExpression;
 import org.wso2.ballerinalang.compiler.tree.expressions.BLangAnnotAccessExpr;
 import org.wso2.ballerinalang.compiler.tree.expressions.BLangArrowFunction;
@@ -8494,9 +8493,49 @@ public class Desugar extends BLangNodeVisitor {
     public void visit(BLangQueryExpr queryExpr) {
         boolean prevIsVisitingQuery = this.isVisitingQuery;
         this.isVisitingQuery = true;
-        BLangStatementExpression stmtExpr = queryDesugar.desugar(queryExpr, env, getVisibleXMLNSStmts(env));
-        result = rewrite(stmtExpr, env);
+        BLangCollectClause collectClause = queryExpr.getCollectClause();
+        if (collectClause != null) {
+            replaceCollectWithGroupBySelect(queryExpr, collectClause);
+            // Since the collect clause is replaced by select clause, the type should be changed to an array type.
+            BType originalQueryResultType = queryExpr.getBType();
+            BArrayType arrayType = new BArrayType(originalQueryResultType);
+            queryExpr.setBType(arrayType);
+            queryExpr.expectedType = arrayType;
+
+            BLangStatementExpression stmtExpr = queryDesugar.desugar(queryExpr, env, getVisibleXMLNSStmts(env));
+
+            Location pos = queryExpr.pos;
+            BLangBlockStmt blockStmt = ASTBuilderUtil.createBlockStmt(pos);
+            BLangSimpleVariableDef groupBySelectResult =
+                    createVarDef("$groupBySelectResult$", arrayType, stmtExpr, pos);
+            blockStmt.addStatement(groupBySelectResult);
+            BLangStatementExpression collectResult = ASTBuilderUtil.createStatementExpression(blockStmt,
+                    createIndexBasedAccessExpr(originalQueryResultType, pos, createIntLiteral(0),
+                            groupBySelectResult.var.symbol, null));
+            collectResult.setBType(originalQueryResultType);
+            result = rewrite(collectResult, env);
+        } else {
+            result = rewrite(queryDesugar.desugar(queryExpr, env, getVisibleXMLNSStmts(env)), env);
+        }
         this.isVisitingQuery = prevIsVisitingQuery;
+    }
+
+    private void replaceCollectWithGroupBySelect(BLangQueryExpr queryExpr, BLangCollectClause collectClause) {
+        Location pos = collectClause.pos;
+        BLangGroupByClause groupByClause = (BLangGroupByClause) TreeBuilder.createGroupByClauseNode();
+        groupByClause.pos = pos;
+        BLangGroupingKey groupingKeyNode = (BLangGroupingKey) TreeBuilder.createGroupingKeyNode();
+        groupingKeyNode.groupingKey = createVarDef("_", symTable.booleanType,
+                createLiteral(collectClause.pos, symTable.booleanType, true), pos);
+        groupByClause.groupingKeyList.add(groupingKeyNode);
+        groupByClause.env = collectClause.env;
+
+        BLangSelectClause selectClause = (BLangSelectClause) TreeBuilder.createSelectClauseNode();
+        selectClause.pos = collectClause.pos;
+        selectClause.expression = collectClause.expression;
+
+        queryExpr.queryClauseList.add(queryExpr.queryClauseList.size() - 1, groupByClause);
+        queryExpr.queryClauseList.add(selectClause);
     }
 
     List<BLangStatement> getVisibleXMLNSStmts(SymbolEnv env) {

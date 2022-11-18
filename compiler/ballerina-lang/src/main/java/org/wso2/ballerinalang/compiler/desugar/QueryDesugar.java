@@ -580,7 +580,7 @@ public class QueryDesugar extends BLangNodeVisitor {
         bLLetClause.pos = groupingKeyVarDef.pos;
         List<BLangLetVariable> letVars = new ArrayList<>();
         BLangLetVariable letVar = TreeBuilder.createLetVariableNode();
-        letVar.definitionNode = (VariableDefinitionNode) groupingKeyVarDef.var;
+        letVar.definitionNode = groupingKeyVarDef;
         letVar.definitionNode.getVariable().addFlag(Flag.FINAL);
         letVars.add(letVar);
         bLLetClause.letVarDeclarations = letVars;

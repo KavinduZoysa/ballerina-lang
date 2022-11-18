@@ -7086,6 +7086,7 @@ public class Types {
         boolean checkWithinQueryExpr = false;
         HashSet<BType> completeEarlyErrorList = new HashSet<>();
         boolean isAfterGroupBy = false;
+        boolean withinCollectClause = false;
         HashSet<BType> checkedErrorList = new HashSet<>();
         boolean breakToParallelQueryEnv = false;
         int letCount = 0;
