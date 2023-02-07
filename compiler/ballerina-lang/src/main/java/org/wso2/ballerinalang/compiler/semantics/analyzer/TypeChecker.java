@@ -1042,7 +1042,14 @@ public class TypeChecker extends SimpleBLangNodeAnalyzer<TypeChecker.AnalyzerDat
                     symTable.semanticError : types.checkType(listConstructor, inferredType, expType);
             return;
         }
-
+        if (listConstructor.exprs.size() == 1) {
+            if (getSequenceType(listConstructor.exprs.get(0), data) != null) {
+                BType type = checkExpr(listConstructor, data);
+                data.resultType = types.checkType(listConstructor.pos, type, expType,
+                        DiagnosticErrorCode.INCOMPATIBLE_TYPES);
+                return;
+            }
+        }
         data.resultType = checkListConstructorCompatibility(expType, listConstructor, data);
     }
 
@@ -2163,6 +2170,18 @@ public class TypeChecker extends SimpleBLangNodeAnalyzer<TypeChecker.AnalyzerDat
         }
 
         return errored ? symTable.semanticError : tupleType;
+    }
+
+    private BSequenceType getSequenceType(BLangExpression expr, AnalyzerData data) {
+        if (expr.getKind() != NodeKind.SIMPLE_VARIABLE_REF) {
+            return null;
+        }
+        BLangSimpleVarRef varRef = (BLangSimpleVarRef) expr;
+        BSymbol symbol = symResolver.lookupSymbolInMainSpace(data.env, new Name(varRef.variableName.value));
+        if ((symbol.tag & SymTag.SEQUENCE) == SymTag.SEQUENCE) {
+            return (BSequenceType) symbol.type;
+        }
+        return null;
     }
 
     private BType checkReadOnlyListType(BLangListConstructorExpr listConstructor, AnalyzerData data) {
@@ -6627,7 +6646,6 @@ public class TypeChecker extends SimpleBLangNodeAnalyzer<TypeChecker.AnalyzerDat
         SymbolEnv groupByEnv = SymbolEnv.createTypeNarrowedEnv(groupByClause, data.commonAnalyzerData.queryEnvs.pop());
         groupByClause.env = groupByEnv;
         data.commonAnalyzerData.queryEnvs.push(groupByEnv);
-        Set<String> nonGroupingKeys = new HashSet<>(data.queryVariables);
         for (BLangGroupingKey groupingKey : groupByClause.groupingKeyList) {
             String variable;
             if (groupingKey.variableRef != null) {
@@ -6639,10 +6657,10 @@ public class TypeChecker extends SimpleBLangNodeAnalyzer<TypeChecker.AnalyzerDat
                 variable = groupingKey.variableDef.var.name.value;
                 data.queryVariables.add(variable);
             }
-            nonGroupingKeys.remove(variable);
+            data.queryVariables.remove(variable);
         }
-        groupByClause.nonGroupingKeys = nonGroupingKeys;
-        for (String var : nonGroupingKeys) {
+        groupByClause.nonGroupingKeys = new HashSet<>(data.queryVariables);
+        for (String var : groupByClause.nonGroupingKeys) {
             Name name = new Name(var);
             BSymbol originalSymbol = symResolver.lookupSymbolInMainSpace(groupByEnv, name);
             BSequenceSymbol sequenceSymbol = new BSequenceSymbol(originalSymbol.flags, name, originalSymbol.pkgID,
