@@ -520,15 +520,6 @@
       "insertTextFormat": "Snippet"
     },
     {
-      "label": "var",
-      "kind": "Keyword",
-      "detail": "Keyword",
-      "sortText": "BQ",
-      "filterText": "var",
-      "insertText": "var ",
-      "insertTextFormat": "Snippet"
-    },
-    {
       "label": "new",
       "kind": "Keyword",
       "detail": "Keyword",
