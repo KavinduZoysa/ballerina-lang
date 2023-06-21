@@ -907,13 +907,14 @@ public class IsolationAnalyzer extends BLangNodeVisitor {
 
     @Override
     public void visit(BLangGroupByClause groupByClause) {
-        SymbolEnv orderByEnv = groupByClause.env;
+        SymbolEnv groupByEnv = groupByClause.env;
         for (BLangGroupingKey groupingKeyNode : groupByClause.groupingKeyList) {
-            analyzeNode(groupingKeyNode, orderByEnv);
+            analyzeNode(groupingKeyNode, groupByEnv);
         }
     }
 
     public void visit(BLangGroupingKey groupingKey) {
+        analyzeNode((BLangNode) groupingKey.getGroupingKey(), this.env);
     }
 
     @Override
