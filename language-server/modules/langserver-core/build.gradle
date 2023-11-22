@@ -148,7 +148,11 @@ test {
     systemProperty "ballerina.home", "$buildDir/"
     systemProperty "experimental", "true"
     systemProperty "ballerina.version", project.version
-    systemProperty "responseTimeThreshold", 2000
+    if (System.getenv('LS_PERFORMANCE_TEST_IN_GITHUB_WORKFLOW')) {
+        systemProperty "responseTimeThreshold", 2000
+    } else {
+        systemProperty "responseTimeThreshold", 300
+    }
     useTestNG() {
         suites 'src/test/resources/testng.xml'
     }

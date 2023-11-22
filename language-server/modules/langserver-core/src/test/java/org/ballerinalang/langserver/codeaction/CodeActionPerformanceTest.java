@@ -53,6 +53,7 @@ public class CodeActionPerformanceTest extends AbstractCodeActionTest {
         long end = System.currentTimeMillis();
         long actualResponseTime = end - start;
         int expectedResponseTime = PerformanceTestUtils.getCodeActionResponseTimeThreshold();
+        System.out.println("expectedResponseTime: " + expectedResponseTime);
         System.out.println("actualResponseTime: " + actualResponseTime);
         Assert.assertTrue(actualResponseTime < expectedResponseTime,
                 String.format("Expected response time = %d, received %d.", expectedResponseTime, actualResponseTime));
