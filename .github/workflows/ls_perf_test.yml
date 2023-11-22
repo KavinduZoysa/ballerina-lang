@@ -37,7 +37,7 @@ jobs:
         env:
           packageUser: ${{ github.actor }}
           packagePAT: ${{ secrets.GITHUB_TOKEN }}
-          LS_PERFORMANCE_TEST_IN_GITHUB_WORKFLOW: true
+#          LS_PERFORMANCE_TEST_IN_GITHUB_WORKFLOW: true
         run: |
           export DISPLAY=':99.0'
           chmod +x perf_test.sh & ./perf_test.sh
