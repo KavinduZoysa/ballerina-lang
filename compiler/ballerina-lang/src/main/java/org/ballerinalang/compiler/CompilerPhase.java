@@ -41,6 +41,7 @@ public enum CompilerPhase {
     CONSTANT_PROPAGATION("constantPropagation"),
 
     COMPILER_PLUGIN("compilerPlugin"),
+    WORKER_DESUGAR("workerDesugar"),
 
     DESUGAR("desugar"),
 

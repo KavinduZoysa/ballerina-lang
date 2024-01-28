@@ -24,6 +24,7 @@ import org.wso2.ballerinalang.compiler.bir.BIRGen;
 import org.wso2.ballerinalang.compiler.bir.emit.BIREmitter;
 import org.wso2.ballerinalang.compiler.desugar.ConstantPropagation;
 import org.wso2.ballerinalang.compiler.desugar.Desugar;
+import org.wso2.ballerinalang.compiler.desugar.WorkerDesugar;
 import org.wso2.ballerinalang.compiler.diagnostic.CompilerBadSadDiagnostic;
 import org.wso2.ballerinalang.compiler.semantics.analyzer.CodeAnalyzer;
 import org.wso2.ballerinalang.compiler.semantics.analyzer.CompilerPluginRunner;
@@ -65,6 +66,7 @@ public class CompilerPhaseRunner {
     private final DocumentationAnalyzer documentationAnalyzer;
     private final CompilerPluginRunner compilerPluginRunner;
     private final ObservabilitySymbolCollector observabilitySymbolCollector;
+    private final WorkerDesugar workerDesugar;
     private final Desugar desugar;
     private final BIRGen birGenerator;
     private final BIREmitter birEmitter;
@@ -96,6 +98,7 @@ public class CompilerPhaseRunner {
         this.constantPropagation = ConstantPropagation.getInstance(context);
         this.compilerPluginRunner = CompilerPluginRunner.getInstance(context);
         this.observabilitySymbolCollector = ObservabilitySymbolCollectorRunner.getInstance(context);
+        this.workerDesugar = WorkerDesugar.getInstance(context);
         this.desugar = Desugar.getInstance(context);
         this.birGenerator = BIRGen.getInstance(context);
         this.birEmitter = BIREmitter.getInstance(context);
@@ -145,6 +148,11 @@ public class CompilerPhaseRunner {
     }
 
     public void performBirGenPhases(BLangPackage pkgNode) {
+        if (this.stopCompilation(pkgNode, CompilerPhase.WORKER_DESUGAR)) {
+            return;
+        }
+
+        workerDesugar(pkgNode);
         if (this.stopCompilation(pkgNode, CompilerPhase.DESUGAR)) {
             return;
         }
@@ -212,6 +220,10 @@ public class CompilerPhaseRunner {
         return this.compilerPluginRunner.runPlugins(pkgNode);
     }
 
+    public BLangPackage workerDesugar(BLangPackage pkgNode) {
+        return this.workerDesugar.perform(pkgNode);
+    }
+    
     public BLangPackage desugar(BLangPackage pkgNode) {
         return this.desugar.perform(pkgNode);
     }
