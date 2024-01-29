@@ -45,6 +45,7 @@ import org.wso2.ballerinalang.compiler.util.Names;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -63,8 +64,10 @@ enum ActionCheck {
 
 // TODO: check about large number of do stmts
 // TODO: check for wait stmts
+// TODO: Compare jars
 public class WorkerDesugar {
     private static final CompilerContext.Key<WorkerDesugar> WORKER_DESUGAR_KEY = new CompilerContext.Key<>();
+    private static final String END_WORKER = "function";
     
     private record Node(BLangFunction worker, List<String> from, List<String> to) {
     }
@@ -111,18 +114,18 @@ public class WorkerDesugar {
     
     private Map<String, List<String>> accumulate(Map<String, Node> nodes) {
         Map<String, List<String>> accumulatedWorkers = new HashMap<>();
-        Map<String, String> workerStatus = new HashMap<>();
+        HashSet<String> checkedWorkers = new HashSet<>();
         
-        for (Map.Entry<String, Node> entry : nodes.entrySet()) {
+        for (var entry : nodes.entrySet()) {
             String worker = entry.getKey();
-            Node node = entry.getValue();
-            if (workerStatus.containsKey(worker)) {
+            if (checkedWorkers.contains(worker)) {
                 continue;
             }
-            if (isSeqStart(nodes, node)) {
-                detectSeq(nodes, worker, accumulatedWorkers, workerStatus);
+            if (isSeqStart(nodes, entry.getValue())) {
+                detectSeq(nodes, worker, accumulatedWorkers, checkedWorkers);
             }
         }
+        
         for (Map.Entry<String, List<String>> entry : accumulatedWorkers.entrySet()) {
             // analyse for send action
             List<BLangStatement> stmts = new ArrayList<>();
@@ -152,11 +155,6 @@ public class WorkerDesugar {
         return accumulatedWorkers;
     }
     
-    // Here seq start is considered as a worker which has only one connection 
-    // to another worker(or multiple connections to a single worker).
-    // Among the workers that satisfy the above condition, 
-    // for the worker that has only one incoming connection, the previous worker should be considered
-    // That worker should not be a part of the sequence.
     private boolean isSeqStart(Map<String, Node> nodes, Node node) {
         List<String> from = node.from;
         List<String> to = node.to;
@@ -165,6 +163,7 @@ public class WorkerDesugar {
             return false;
         }
         if (from.size() == 1) {
+            // To confirm that the previous worker is not a part of the sequence
             String prevWorker = from.get(0);
             Node prevNode = nodes.get(prevWorker);
             return prevNode.to.size() > 1;
@@ -179,32 +178,32 @@ public class WorkerDesugar {
         return from.size() == 1 && to.size() == 1;
     }
     
-    private void detectSeq(Map<String, Node> nodes, String startWorker, Map<String, List<String>> accumulatedWorkers, Map<String, 
-            String> workerStatus) {
-        String worker = nodes.get(startWorker).to.get(0);
+    private void detectSeq(Map<String, Node> nodes, String startWorker, Map<String, List<String>> accumulatedWorkers, 
+                           HashSet<String> checkedWorkers) {
         List<String> seq = new ArrayList<>();
         seq.add(startWorker);
+        String nextWorker = nodes.get(startWorker).to.get(0);
         while (true) {
-            Node node = nodes.get(worker);
-            if (node == null) {
-                // Should properly handle this, this comes when the worker is `function`
+            Node node = nodes.get(nextWorker);
+            if (isSeqMiddle(node)) {
+                checkedWorkers.add(nextWorker);
+                seq.add(nextWorker);
+                nextWorker = node.to.get(0);
+                if (nextWorker.equals(END_WORKER)) {
+                    break;
+                }
+            } else if (node.to.isEmpty()) {
+                // End of sequence and an end of graph
+                seq.add(nextWorker);
+                break;
+            } else {
+                // End of sequence and not an end of graph
                 break;
             }
-            if (isSeqMiddle(node)) {
-                workerStatus.put(worker, "seq");
-                seq.add(worker);
-                worker = node.to.get(0);
-                continue;
-            }
-            // This is the end of the sequence
-            if (node.to.isEmpty()) {
-                seq.add(worker);
-            }
-            break;
         }
         if (seq.size() > 1) {
             accumulatedWorkers.put(startWorker, seq);
-            workerStatus.put(startWorker, "seq");
+            checkedWorkers.add(startWorker);
         }
     }
     
