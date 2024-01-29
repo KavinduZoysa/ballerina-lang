@@ -107,13 +107,13 @@ public class WorkerDesugar {
                 nodes.put(name, new Node(function, from, to));
             }
         }
-        Map<String, List<String>> accumulatedWorkers = accumulate(nodes);
+        List<List<String>> accumulatedWorkers = accumulate(nodes);
         deleteAccumulatedWorkers(accumulatedWorkers, nodes, pkgNode);
         return pkgNode;
     }
     
-    private Map<String, List<String>> accumulate(Map<String, Node> nodes) {
-        Map<String, List<String>> accumulatedWorkers = new HashMap<>();
+    private List<List<String>> accumulate(Map<String, Node> nodes) {
+        List<List<String>> accumulatedWorkers = new ArrayList<>();
         HashSet<String> checkedWorkers = new HashSet<>();
         
         for (var entry : nodes.entrySet()) {
@@ -126,14 +126,11 @@ public class WorkerDesugar {
             }
         }
         
-        for (Map.Entry<String, List<String>> entry : accumulatedWorkers.entrySet()) {
+        for (List<String> workers : accumulatedWorkers) {
             // analyse for send action
             List<BLangStatement> stmts = new ArrayList<>();
             ActionsAccumulator actionAccumulator = new ActionsAccumulator(stmts);
             
-            // [w1] -> [w1, w2, w3, w4]
-            // [w2, w3, w4] will be combined with w1
-            List<String> workers = entry.getValue();
             String firstWorkerInSeq = workers.get(0);
             BLangFunction firstWorkerNode = nodes.get(firstWorkerInSeq).worker;
             actionAccumulator.analyze(firstWorkerNode, ActionCheck.SEND_ONLY, firstWorkerNode.pos); // change `analyze` to `accumulate`
@@ -178,7 +175,7 @@ public class WorkerDesugar {
         return from.size() == 1 && to.size() == 1;
     }
     
-    private void detectSeq(Map<String, Node> nodes, String startWorker, Map<String, List<String>> accumulatedWorkers, 
+    private void detectSeq(Map<String, Node> nodes, String startWorker, List<List<String>> accumulatedWorkers, 
                            HashSet<String> checkedWorkers) {
         List<String> seq = new ArrayList<>();
         seq.add(startWorker);
@@ -202,14 +199,13 @@ public class WorkerDesugar {
             }
         }
         if (seq.size() > 1) {
-            accumulatedWorkers.put(startWorker, seq);
+            accumulatedWorkers.add(seq);
             checkedWorkers.add(startWorker);
         }
     }
     
-    private void deleteAccumulatedWorkers(Map<String, List<String>> accumulatedWorkers, Map<String, Node> nodes, BLangPackage pkgNode) {
-        for (Map.Entry<String, List<String>> entry : accumulatedWorkers.entrySet()) {
-            List<String> workers = entry.getValue();
+    private void deleteAccumulatedWorkers(List<List<String>> accumulatedWorkers, Map<String, Node> nodes, BLangPackage pkgNode) {
+        for (List<String> workers : accumulatedWorkers) {
             deleteWorkers(nodes, pkgNode, workers);
         }
     }
@@ -226,7 +222,8 @@ public class WorkerDesugar {
                     int ii = stmts.indexOf(varDef);
                     if (ii != -1) {
                         stmts.remove(ii);
-                        stmts.remove(ii); // remove var-def for function call
+                        // remove var-def for function call
+                        stmts.remove(ii);
                     }
                 }
             }
