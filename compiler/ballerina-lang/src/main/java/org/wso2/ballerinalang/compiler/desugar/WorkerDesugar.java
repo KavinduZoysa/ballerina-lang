@@ -68,8 +68,6 @@ public class WorkerDesugar {
     
     private record Node(BLangFunction worker, List<String> from, List<String> to) {
     }
-
-    private final Map<String, Node> nodes = new HashMap<>();
     
     public static WorkerDesugar getInstance(CompilerContext context) {
         WorkerDesugar workerDesugar = context.get(WORKER_DESUGAR_KEY);
@@ -86,6 +84,8 @@ public class WorkerDesugar {
     // TODO: Multiple connections from/to a single worker is not supported yet
     // TODO: Check eventIndex with Lochana
     public BLangPackage perform(BLangPackage pkgNode) {
+        Map<String, Node> nodes = new HashMap<>();
+        // TODO: check for multiple resources
         for (BLangFunction function : pkgNode.functions) {
             if (function.getKind() == NodeKind.FUNCTION && function.flagSet.contains(Flag.WORKER)) {
                 String name = function.defaultWorkerName.value;
@@ -104,11 +104,12 @@ public class WorkerDesugar {
                 nodes.put(name, new Node(function, from, to));
             }
         }
-        accumulate(pkgNode);
+        Map<String, List<String>> accumulatedWorkers = accumulate(nodes);
+        deleteAccumulatedWorkers(accumulatedWorkers, nodes, pkgNode);
         return pkgNode;
     }
     
-    private void accumulate(BLangPackage pkgNode) {
+    private Map<String, List<String>> accumulate(Map<String, Node> nodes) {
         Map<String, List<String>> accumulatedWorkers = new HashMap<>();
         Map<String, String> workerStatus = new HashMap<>();
         
@@ -118,8 +119,8 @@ public class WorkerDesugar {
             if (workerStatus.containsKey(worker)) {
                 continue;
             }
-            if (isSeqStart(node)) {
-                detectSeq(worker, accumulatedWorkers, workerStatus);
+            if (isSeqStart(nodes, node)) {
+                detectSeq(nodes, worker, accumulatedWorkers, workerStatus);
             }
         }
         for (Map.Entry<String, List<String>> entry : accumulatedWorkers.entrySet()) {
@@ -146,9 +147,9 @@ public class WorkerDesugar {
             WorkerReceiverReplacer receiverReplacer = new WorkerReceiverReplacer(firstWorkerInSeq);
             receiverReplacer.analyze(lastWorkerNode);
             
-            deleteAccumulatedWorkers(pkgNode, workers);
-            updateChannels(firstWorkerNode, firstWorkerInSeq, lastWorkerInSeq);
+            updateChannels(nodes, firstWorkerNode, firstWorkerInSeq, lastWorkerInSeq);
         }
+        return accumulatedWorkers;
     }
     
     // Here seq start is considered as a worker which has only one connection 
@@ -156,7 +157,7 @@ public class WorkerDesugar {
     // Among the workers that satisfy the above condition, 
     // for the worker that has only one incoming connection, the previous worker should be considered
     // That worker should not be a part of the sequence.
-    private boolean isSeqStart(Node node) {
+    private boolean isSeqStart(Map<String, Node> nodes, Node node) {
         List<String> from = node.from;
         List<String> to = node.to;
         
@@ -178,7 +179,7 @@ public class WorkerDesugar {
         return from.size() == 1 && to.size() == 1;
     }
     
-    private void detectSeq(String startWorker, Map<String, List<String>> accumulatedWorkers, Map<String, 
+    private void detectSeq(Map<String, Node> nodes, String startWorker, Map<String, List<String>> accumulatedWorkers, Map<String, 
             String> workerStatus) {
         String worker = nodes.get(startWorker).to.get(0);
         List<String> seq = new ArrayList<>();
@@ -207,7 +208,14 @@ public class WorkerDesugar {
         }
     }
     
-    private void deleteAccumulatedWorkers(BLangPackage pkgNode, List<String> workers) {
+    private void deleteAccumulatedWorkers(Map<String, List<String>> accumulatedWorkers, Map<String, Node> nodes, BLangPackage pkgNode) {
+        for (Map.Entry<String, List<String>> entry : accumulatedWorkers.entrySet()) {
+            List<String> workers = entry.getValue();
+            deleteWorkers(nodes, pkgNode, workers);
+        }
+    }
+    
+    private void deleteWorkers(Map<String, Node> nodes, BLangPackage pkgNode, List<String> workers) {
         for (int i = 1; i < workers.size(); i++) {
             BLangFunction function = nodes.get(workers.get(i)).worker;
             BLangNode parent = function.parent.parent.parent;
@@ -230,12 +238,13 @@ public class WorkerDesugar {
         }
     }
     
-    private void updateChannels(BLangFunction combinedWorker, String firstWorker, String lastWorker) {
+    private void updateChannels(Map<String, Node> nodes, BLangFunction combinedWorker, String firstWorker, String lastWorker) {
         LinkedHashSet<BLangWorkerSendReceiveExpr.Channel> sendsToThis = new LinkedHashSet<>();
-        if (nodes.get(lastWorker).to.isEmpty()) {
+        List<String> lastWorkerTo = nodes.get(lastWorker).to;
+        if (lastWorkerTo.isEmpty()) {
             return;
         }
-        String nextToSeqEnd = nodes.get(lastWorker).to.get(0);
+        String nextToSeqEnd = lastWorkerTo.get(0);
         for (BLangWorkerSendReceiveExpr.Channel channel : combinedWorker.sendsToThis) {
             if (channel.receiver.equals(firstWorker)) {
                 sendsToThis.add(channel);
