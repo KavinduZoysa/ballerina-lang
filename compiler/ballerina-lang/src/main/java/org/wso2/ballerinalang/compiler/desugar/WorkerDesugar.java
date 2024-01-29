@@ -66,8 +66,10 @@ enum ActionCheck {
 public class WorkerDesugar {
     private static final CompilerContext.Key<WorkerDesugar> WORKER_DESUGAR_KEY = new CompilerContext.Key<>();
     
-    private final Map<String, Edges> workerGraph = new HashMap<>();
-    private final Map<String, BLangFunction> workerMap = new HashMap<>();
+    private record Node(BLangFunction worker, List<String> from, List<String> to) {
+    }
+
+    private final Map<String, Node> nodes = new HashMap<>();
     
     public static WorkerDesugar getInstance(CompilerContext context) {
         WorkerDesugar workerDesugar = context.get(WORKER_DESUGAR_KEY);
@@ -76,16 +78,13 @@ public class WorkerDesugar {
         }
         return workerDesugar;
     }
-        
+    
     private WorkerDesugar(CompilerContext context) {
         context.put(WORKER_DESUGAR_KEY, this);
     }
     
-    private record Edges(List<String> from, List<String> to) {
-        
-    }
-    
     // TODO: Multiple connections from/to a single worker is not supported yet
+    // TODO: Check eventIndex with Lochana
     public BLangPackage perform(BLangPackage pkgNode) {
         for (BLangFunction function : pkgNode.functions) {
             if (function.getKind() == NodeKind.FUNCTION && function.flagSet.contains(Flag.WORKER)) {
@@ -102,8 +101,7 @@ public class WorkerDesugar {
                         to.add(connection.receiver);
                     }
                 }
-                workerGraph.put(name, new Edges(from, to));
-                workerMap.put(name, function);
+                nodes.put(name, new Node(function, from, to));
             }
         }
         accumulate(pkgNode);
@@ -114,13 +112,13 @@ public class WorkerDesugar {
         Map<String, List<String>> accumulatedWorkers = new HashMap<>();
         Map<String, String> workerStatus = new HashMap<>();
         
-        for (Map.Entry<String, Edges> entry : workerGraph.entrySet()) {
+        for (Map.Entry<String, Node> entry : nodes.entrySet()) {
             String worker = entry.getKey();
-            Edges edges = entry.getValue();
+            Node node = entry.getValue();
             if (workerStatus.containsKey(worker)) {
                 continue;
             }
-            if (isSeqStart(edges)) {
+            if (isSeqStart(node)) {
                 detectSeq(worker, accumulatedWorkers, workerStatus);
             }
         }
@@ -133,15 +131,15 @@ public class WorkerDesugar {
             // [w2, w3, w4] will be combined with w1
             List<String> workers = entry.getValue();
             String firstWorkerInSeq = workers.get(0);
-            BLangFunction firstWorkerNode = workerMap.get(firstWorkerInSeq);
+            BLangFunction firstWorkerNode = nodes.get(firstWorkerInSeq).worker;
             actionAccumulator.analyze(firstWorkerNode, ActionCheck.SEND_ONLY, firstWorkerNode.pos); // change `analyze` to `accumulate`
 
             for (int i = 1; i < workers.size() - 1; i++) {
-                BLangFunction workerNode = workerMap.get(workers.get(i));
+                BLangFunction workerNode = nodes.get(workers.get(i)).worker;
                 actionAccumulator.analyze(workerNode, ActionCheck.SEND_RECEIVE, workerNode.pos);
             }
             String lastWorkerInSeq = workers.get(workers.size() - 1);
-            BLangFunction lastWorkerNode = workerMap.get(lastWorkerInSeq);
+            BLangFunction lastWorkerNode = nodes.get(lastWorkerInSeq).worker;
             actionAccumulator.analyze(lastWorkerNode, ActionCheck.RECEIVE_ONLY, lastWorkerNode.pos);
             ((BLangBlockFunctionBody) firstWorkerNode.body).stmts = stmts;
             
@@ -158,47 +156,47 @@ public class WorkerDesugar {
     // Among the workers that satisfy the above condition, 
     // for the worker that has only one incoming connection, the previous worker should be considered
     // That worker should not be a part of the sequence.
-    private boolean isSeqStart(Edges edges) {
-        List<String> from = edges.from;
-        List<String> to = edges.to;
+    private boolean isSeqStart(Node node) {
+        List<String> from = node.from;
+        List<String> to = node.to;
         
         if (to.size() != 1) {
             return false;
         }
         if (from.size() == 1) {
             String prevWorker = from.get(0);
-            Edges prevEdges = workerGraph.get(prevWorker);
-            return prevEdges.to.size() > 1;
+            Node prevNode = nodes.get(prevWorker);
+            return prevNode.to.size() > 1;
         }
         return true;
     }
     
-    private boolean isSeqMiddle(Edges edges) {
-        List<String> from = edges.from;
-        List<String> to = edges.to;
+    private boolean isSeqMiddle(Node node) {
+        List<String> from = node.from;
+        List<String> to = node.to;
         // Do we need to check "from" size?
         return from.size() == 1 && to.size() == 1;
     }
     
     private void detectSeq(String startWorker, Map<String, List<String>> accumulatedWorkers, Map<String, 
             String> workerStatus) {
-        String worker = workerGraph.get(startWorker).to.get(0);
+        String worker = nodes.get(startWorker).to.get(0);
         List<String> seq = new ArrayList<>();
         seq.add(startWorker);
         while (true) {
-            Edges edges = workerGraph.get(worker);
-            if (edges == null) {
+            Node node = nodes.get(worker);
+            if (node == null) {
                 // Should properly handle this, this comes when the worker is `function`
                 break;
             }
-            if (isSeqMiddle(edges)) {
+            if (isSeqMiddle(node)) {
                 workerStatus.put(worker, "seq");
                 seq.add(worker);
-                worker = edges.to.get(0);
+                worker = node.to.get(0);
                 continue;
             }
             // This is the end of the sequence
-            if (edges.to.isEmpty()) {
+            if (node.to.isEmpty()) {
                 seq.add(worker);
             }
             break;
@@ -211,7 +209,7 @@ public class WorkerDesugar {
     
     private void deleteAccumulatedWorkers(BLangPackage pkgNode, List<String> workers) {
         for (int i = 1; i < workers.size(); i++) {
-            BLangFunction function = workerMap.get(workers.get(i));
+            BLangFunction function = nodes.get(workers.get(i)).worker;
             BLangNode parent = function.parent.parent.parent;
             if (parent.getKind() == NodeKind.VARIABLE_DEF) {
                 BLangSimpleVariableDef varDef = (BLangSimpleVariableDef) parent;
@@ -234,10 +232,10 @@ public class WorkerDesugar {
     
     private void updateChannels(BLangFunction combinedWorker, String firstWorker, String lastWorker) {
         LinkedHashSet<BLangWorkerSendReceiveExpr.Channel> sendsToThis = new LinkedHashSet<>();
-        if (workerGraph.get(lastWorker).to.isEmpty()) {
+        if (nodes.get(lastWorker).to.isEmpty()) {
             return;
         }
-        String nextToSeqEnd = workerGraph.get(lastWorker).to.get(0);
+        String nextToSeqEnd = nodes.get(lastWorker).to.get(0);
         for (BLangWorkerSendReceiveExpr.Channel channel : combinedWorker.sendsToThis) {
             if (channel.receiver.equals(firstWorker)) {
                 sendsToThis.add(channel);
@@ -250,7 +248,7 @@ public class WorkerDesugar {
         if (nextToSeqEnd.equals("function")) {
             return;
         }
-        BLangFunction nodeNextToSeqEnd = workerMap.get(nextToSeqEnd);
+        BLangFunction nodeNextToSeqEnd = nodes.get(nextToSeqEnd).worker;
         LinkedHashSet<BLangWorkerSendReceiveExpr.Channel> sendsToThis1 = new LinkedHashSet<>();
         for (BLangWorkerSendReceiveExpr.Channel channel : nodeNextToSeqEnd.sendsToThis) {
             if (channel.sender.equals(lastWorker)) {
