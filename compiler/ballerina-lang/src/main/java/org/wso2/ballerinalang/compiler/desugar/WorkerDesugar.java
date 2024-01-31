@@ -113,20 +113,9 @@ public class WorkerDesugar {
     }
     
     private List<List<String>> accumulate(Map<String, Node> nodes) {
-        List<List<String>> accumulatedWorkers = new ArrayList<>();
-        HashSet<String> checkedWorkers = new HashSet<>();
+        List<List<String>> workerSequences = detectSequences(nodes);
         
-        for (var entry : nodes.entrySet()) {
-            String worker = entry.getKey();
-            if (checkedWorkers.contains(worker)) {
-                continue;
-            }
-            if (isSeqStart(nodes, entry.getValue())) {
-                detectSeq(nodes, worker, accumulatedWorkers, checkedWorkers);
-            }
-        }
-        
-        for (List<String> workers : accumulatedWorkers) {
+        for (List<String> workers : workerSequences) {
             // analyse for send action
             List<BLangStatement> stmts = new ArrayList<>();
             ActionsAccumulator actionAccumulator = new ActionsAccumulator(stmts);
@@ -149,7 +138,27 @@ public class WorkerDesugar {
             
             updateChannels(nodes, firstWorkerNode, firstWorkerInSeq, lastWorkerInSeq);
         }
-        return accumulatedWorkers;
+        return workerSequences;
+    }
+    
+    private List<List<String>> detectSequences(Map<String, Node> nodes) {
+        List<List<String>> workerSequences = new ArrayList<>();
+        HashSet<String> checkedWorkers = new HashSet<>();
+
+        for (var entry : nodes.entrySet()) {
+            String worker = entry.getKey();
+            if (checkedWorkers.contains(worker)) {
+                continue;
+            }
+            if (isSeqStart(nodes, entry.getValue())) {
+                List<String> seq = detectSequence(nodes, worker, checkedWorkers);
+                if (seq.size() > 1) {
+                    workerSequences.add(seq);
+                    checkedWorkers.add(worker);
+                }
+            }
+        }
+        return workerSequences;
     }
     
     private boolean isSeqStart(Map<String, Node> nodes, Node node) {
@@ -168,15 +177,7 @@ public class WorkerDesugar {
         return true;
     }
     
-    private boolean isSeqMiddle(Node node) {
-        List<String> from = node.from;
-        List<String> to = node.to;
-        // Do we need to check "from" size?
-        return from.size() == 1 && to.size() == 1;
-    }
-    
-    private void detectSeq(Map<String, Node> nodes, String startWorker, List<List<String>> accumulatedWorkers, 
-                           HashSet<String> checkedWorkers) {
+    private List<String> detectSequence(Map<String, Node> nodes, String startWorker, HashSet<String> checkedWorkers) {
         List<String> seq = new ArrayList<>();
         seq.add(startWorker);
         String nextWorker = nodes.get(startWorker).to.get(0);
@@ -189,21 +190,20 @@ public class WorkerDesugar {
                 if (nextWorker.equals(END_WORKER)) {
                     break;
                 }
-            } else if (node.to.isEmpty()) {
-                // End of sequence and an end of graph
-                seq.add(nextWorker);
-                break;
             } else {
-                // End of sequence and not an end of graph
+                if (node.to.isEmpty()) {
+                    seq.add(nextWorker);
+                }
                 break;
             }
         }
-        if (seq.size() > 1) {
-            accumulatedWorkers.add(seq);
-            checkedWorkers.add(startWorker);
-        }
+        return seq;
     }
     
+    private boolean isSeqMiddle(Node node) {
+        return node.from.size() == 1 && node.to.size() == 1;
+    }
+
     private void deleteAccumulatedWorkers(List<List<String>> accumulatedWorkers, Map<String, Node> nodes, BLangPackage pkgNode) {
         for (List<String> workers : accumulatedWorkers) {
             deleteWorkers(nodes, pkgNode, workers);
@@ -250,7 +250,7 @@ public class WorkerDesugar {
         }
         combinedWorker.sendsToThis = sendsToThis;
 
-        if (nextToSeqEnd.equals("function")) {
+        if (nextToSeqEnd.equals(END_WORKER)) {
             return;
         }
         BLangFunction nodeNextToSeqEnd = nodes.get(nextToSeqEnd).worker;
