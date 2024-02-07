@@ -116,27 +116,26 @@ public class WorkerDesugar {
         List<List<String>> workerSequences = detectSequences(nodes);
         
         for (List<String> workers : workerSequences) {
-            // analyse for send action
             List<BLangStatement> stmts = new ArrayList<>();
             ActionsAccumulator actionAccumulator = new ActionsAccumulator(stmts);
             
-            String firstWorkerInSeq = workers.get(0);
-            BLangFunction firstWorkerNode = nodes.get(firstWorkerInSeq).worker;
-            actionAccumulator.analyze(firstWorkerNode, ActionCheck.SEND_ONLY, firstWorkerNode.pos); // change `analyze` to `accumulate`
+            String startWorker = workers.get(0);
+            BLangFunction startWorkerNode = nodes.get(startWorker).worker;
+            actionAccumulator.analyze(startWorkerNode, ActionCheck.SEND_ONLY, startWorkerNode.pos);
 
             for (int i = 1; i < workers.size() - 1; i++) {
                 BLangFunction workerNode = nodes.get(workers.get(i)).worker;
                 actionAccumulator.analyze(workerNode, ActionCheck.SEND_RECEIVE, workerNode.pos);
             }
-            String lastWorkerInSeq = workers.get(workers.size() - 1);
-            BLangFunction lastWorkerNode = nodes.get(lastWorkerInSeq).worker;
-            actionAccumulator.analyze(lastWorkerNode, ActionCheck.RECEIVE_ONLY, lastWorkerNode.pos);
-            ((BLangBlockFunctionBody) firstWorkerNode.body).stmts = stmts;
+            String endWorker = workers.get(workers.size() - 1);
+            BLangFunction endWorkerNode = nodes.get(endWorker).worker;
+            actionAccumulator.analyze(endWorkerNode, ActionCheck.RECEIVE_ONLY, endWorkerNode.pos);
+            ((BLangBlockFunctionBody) startWorkerNode.body).stmts = stmts;
             
-            WorkerReceiverReplacer receiverReplacer = new WorkerReceiverReplacer(firstWorkerInSeq);
-            receiverReplacer.analyze(lastWorkerNode);
+            WorkerReceiverReplacer receiverReplacer = new WorkerReceiverReplacer(startWorker);
+            receiverReplacer.analyze(endWorkerNode);
             
-            updateChannels(nodes, firstWorkerNode, firstWorkerInSeq, lastWorkerInSeq);
+            updateChannels(nodes, startWorkerNode, startWorker, endWorker);
         }
         return workerSequences;
     }
@@ -191,6 +190,7 @@ public class WorkerDesugar {
                     break;
                 }
             } else {
+                // check end worker condition again.
                 if (node.to.isEmpty()) {
                     seq.add(nextWorker);
                 }
@@ -234,18 +234,18 @@ public class WorkerDesugar {
         }
     }
     
-    private void updateChannels(Map<String, Node> nodes, BLangFunction combinedWorker, String firstWorker, String lastWorker) {
+    private void updateChannels(Map<String, Node> nodes, BLangFunction combinedWorker, String startWorker, String endWorker) {
         LinkedHashSet<BLangWorkerSendReceiveExpr.Channel> sendsToThis = new LinkedHashSet<>();
-        List<String> lastWorkerTo = nodes.get(lastWorker).to;
-        if (lastWorkerTo.isEmpty()) {
+        List<String> endWorkerTo = nodes.get(endWorker).to;
+        if (endWorkerTo.isEmpty()) {
             return;
         }
-        String nextToSeqEnd = lastWorkerTo.get(0);
+        String nextToSeqEnd = endWorkerTo.get(0);
         for (BLangWorkerSendReceiveExpr.Channel channel : combinedWorker.sendsToThis) {
-            if (channel.receiver.equals(firstWorker)) {
+            if (channel.receiver.equals(startWorker)) {
                 sendsToThis.add(channel);
             } else {
-                sendsToThis.add(new BLangWorkerSendReceiveExpr.Channel(firstWorker, nextToSeqEnd, channel.eventIndex));
+                sendsToThis.add(new BLangWorkerSendReceiveExpr.Channel(startWorker, nextToSeqEnd, channel.eventIndex));
             }
         }
         combinedWorker.sendsToThis = sendsToThis;
@@ -256,8 +256,8 @@ public class WorkerDesugar {
         BLangFunction nodeNextToSeqEnd = nodes.get(nextToSeqEnd).worker;
         LinkedHashSet<BLangWorkerSendReceiveExpr.Channel> sendsToThis1 = new LinkedHashSet<>();
         for (BLangWorkerSendReceiveExpr.Channel channel : nodeNextToSeqEnd.sendsToThis) {
-            if (channel.sender.equals(lastWorker)) {
-                sendsToThis1.add(new BLangWorkerSendReceiveExpr.Channel(firstWorker, channel.receiver, channel.eventIndex));
+            if (channel.sender.equals(endWorker)) {
+                sendsToThis1.add(new BLangWorkerSendReceiveExpr.Channel(startWorker, channel.receiver, channel.eventIndex));
             } else {
                 sendsToThis1.add(channel);
             }
@@ -276,11 +276,12 @@ public class WorkerDesugar {
             List<BLangStatement> workerStmts = ((BLangBlockFunctionBody) worker.body).stmts;
             BLangDo blangDo = (BLangDo) TreeBuilder.createDoNode();
             blangDo.body = ASTBuilderUtil.createBlockStmt(pos, new ArrayList<>());
+            AnalyzerData data = new AnalyzerData(blangDo.body.stmts, actionCheck);
             for (BLangStatement stmt : workerStmts) {
-                AnalyzerData data = new AnalyzerData(blangDo.body.stmts, actionCheck);
-                data.doStmts.add(stmt);
-                visitNode(stmt, data);
-                // set env
+                blangDo.body.stmts.add(stmt);
+                if (!isActionFound(data)) {
+                    visitNode(stmt, data);
+                }
             }
             this.stmts.add(blangDo);
         }
@@ -296,9 +297,6 @@ public class WorkerDesugar {
         }
         
         private BLangExpression analyzeExpr(BLangExpression expr, AnalyzerData data) {
-            if (isActionFound(data)) {
-                return expr;
-            }
             data.receiveExpr = null;
             visitNode(expr, data);
             if (data.receiveExpr == null) {
@@ -307,23 +305,6 @@ public class WorkerDesugar {
             return data.receiveExpr;
         }
         
-        // visit statements
-        @Override
-        public void visit(BLangSimpleVariableDef varDef, AnalyzerData data) {
-            visitNode(varDef.var, data);
-        }
-        
-        @Override
-        public void visit(BLangSimpleVariable var, AnalyzerData data) {
-            analyzeExpr(var.expr, data);
-        }
-        
-        @Override
-        public void visit(BLangExpressionStmt exprStmt, AnalyzerData data) {
-            analyzeExpr(exprStmt.expr, data);
-        }
-        
-        // visit expressions
         @Override
         public void visit(BLangWorkerAsyncSendExpr asyncSendExpr, AnalyzerData data) {
             data.foundSendAction = true;
@@ -409,16 +390,16 @@ public class WorkerDesugar {
         public void visit(BLangWorkerAsyncSendExpr sendExpr, AnalyzerData data) {
             BLangWorkerReceive receiveExpr = sendExpr.receive;
             BLangWorkerSendReceiveExpr.Channel channel = receiveExpr.getChannel();
-            receiveExpr.workerIdentifier = createIdentifier(replace);
+            receiveExpr.workerIdentifier = createIdentifier();
             BLangWorkerSendReceiveExpr.Channel newChannel = new BLangWorkerSendReceiveExpr.Channel(replace, channel.receiver, channel.eventIndex);
             receiveExpr.setChannel(newChannel);
             sendExpr.setChannel(newChannel);
         }
 
-        private BLangIdentifier createIdentifier(String name) {
+        private BLangIdentifier createIdentifier() {
             BLangIdentifier identifier = new BLangIdentifier();
-            identifier.setValue(name);
-            identifier.setOriginalValue(name);
+            identifier.setValue(replace);
+            identifier.setOriginalValue(replace);
             return identifier;
         }
 
