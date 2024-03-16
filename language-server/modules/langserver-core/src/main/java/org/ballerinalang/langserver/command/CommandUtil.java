@@ -18,6 +18,7 @@ package org.ballerinalang.langserver.command;
 import org.eclipse.lsp4j.ApplyWorkspaceEditParams;
 import org.eclipse.lsp4j.MessageParams;
 import org.eclipse.lsp4j.MessageType;
+import org.eclipse.lsp4j.Position;
 import org.eclipse.lsp4j.Range;
 import org.eclipse.lsp4j.ResourceOperation;
 import org.eclipse.lsp4j.TextDocumentEdit;
@@ -27,6 +28,7 @@ import org.eclipse.lsp4j.WorkspaceEdit;
 import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.eclipse.lsp4j.services.LanguageClient;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
@@ -64,8 +66,37 @@ public class CommandUtil {
 
         ApplyWorkspaceEditParams applyWorkspaceEditParams = new ApplyWorkspaceEditParams();
         TextEdit textEdit = new TextEdit(range, editText);
-        TextDocumentEdit textDocumentEdit = new TextDocumentEdit(identifier,
-                Collections.singletonList(textEdit));
+//        List<TextEdit> textEdits = new ArrayList<>();
+//        Range r1 = new Range(new Position(1 ,0), new Position(1, 0));
+//        textEdits.add(new TextEdit(r1, "    # target - \n"));
+//        Range r2 = new Range(new Position(1 ,0), new Position(1, 0));
+//        textEdits.add(new TextEdit(r2, "    # completeOn - \n"));
+//        Range r3 = new Range(new Position(2 ,0), new Position(2, 0));
+//        textEdits.add(new TextEdit(r3, "    # retryConfig - \n"));        
+//        TextDocumentEdit textDocumentEdit = new TextDocumentEdit(identifier, textEdits);
+        TextDocumentEdit textDocumentEdit = new TextDocumentEdit(identifier, Collections.singletonList(textEdit));
+        Either<TextDocumentEdit, ResourceOperation> documentChange = Either.forLeft(textDocumentEdit);
+        WorkspaceEdit workspaceEdit = new WorkspaceEdit(Collections.singletonList(documentChange));
+        applyWorkspaceEditParams.setEdit(workspaceEdit);
+        if (client != null) {
+            client.applyEdit(applyWorkspaceEditParams);
+        }
+        return applyWorkspaceEditParams;
+    }
+
+    /**
+     * Apply multiple text edits.
+     * 
+     * @param textEdits  List of text edits to be inserted
+     * @param identifier Document identifier
+     * @param client     Language Client
+     * @return {@link ApplyWorkspaceEditParams}     Workspace edit params
+     */
+    public static ApplyWorkspaceEditParams applyMultipleTextEdits(List<TextEdit> textEdits, 
+                                                                 VersionedTextDocumentIdentifier identifier,
+                                                                 LanguageClient client) {
+        ApplyWorkspaceEditParams applyWorkspaceEditParams = new ApplyWorkspaceEditParams();
+        TextDocumentEdit textDocumentEdit = new TextDocumentEdit(identifier, textEdits);
         Either<TextDocumentEdit, ResourceOperation> documentChange = Either.forLeft(textDocumentEdit);
         WorkspaceEdit workspaceEdit = new WorkspaceEdit(Collections.singletonList(documentChange));
         applyWorkspaceEditParams.setEdit(workspaceEdit);

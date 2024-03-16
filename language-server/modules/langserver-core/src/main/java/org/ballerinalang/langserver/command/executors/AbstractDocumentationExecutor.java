@@ -23,6 +23,7 @@ import io.ballerina.compiler.syntax.tree.ModulePartNode;
 import io.ballerina.compiler.syntax.tree.NonTerminalNode;
 import io.ballerina.compiler.syntax.tree.SyntaxKind;
 import io.ballerina.compiler.syntax.tree.SyntaxTree;
+import io.ballerina.compiler.syntax.tree.TypeDefinitionNode;
 import org.ballerinalang.langserver.command.docs.DocAttachmentInfo;
 import org.ballerinalang.langserver.command.docs.DocumentationGenerator;
 import org.ballerinalang.langserver.common.constants.CommandConstants;
@@ -94,26 +95,68 @@ public abstract class AbstractDocumentationExecutor implements LSCommandExecutor
         }
 
         SemanticModel semanticModel = ctx.workspace().semanticModel(filePath.get()).orElseThrow();
-        Optional<Symbol> documentableSymbol = getDocumentableSymbol(node, semanticModel);
+//        Optional<Symbol> documentableSymbol = getDocumentableSymbol(node, semanticModel);
 
-        boolean isUpdate = false;
-        DocAttachmentInfo docs = docAttachmentInfo.get();
-        Optional<Range> docsRange = DocumentationGenerator.getDocsRange(node);
-        if (documentableSymbol.isPresent()) {
-            Optional<Documentation> documentation = ((Documentable) documentableSymbol.get()).documentation();
-            if (documentation.isPresent()) {
-                docs = docs.mergeDocAttachment(documentation.get());
-            }
+        // Do the check here
+        if (node.kind() == SyntaxKind.TYPE_DEFINITION) {
+            return createDocForTypeDef((TypeDefinitionNode) node, docAttachmentInfo.get(), semanticModel,
+                    textDocumentIdentifier, ctx.getLanguageClient());
+        } else {
+            return createDocs(node, docAttachmentInfo.get(), semanticModel, textDocumentIdentifier,
+                    ctx.getLanguageClient());
         }
+    }
+
+
+//        if (documentableSymbol.isPresent()) {
+//            Symbol symbol = documentableSymbol.get();
+//            if (symbol.kind() == SymbolKind.TYPE_DEFINITION && ((TypeDefinitionSymbol) symbol).typeDescriptor().typeKind() == TypeDescKind.RECORD) {
+//                List<TextEdit> textEdits = new ArrayList<>();
+//                Map<String, RecordFieldSymbol> fields = ((RecordTypeSymbol) ((TypeDefinitionSymbol) symbol).typeDescriptor()).fieldDescriptors();
+//                for (Map.Entry<String, RecordFieldSymbol> field : fields.entrySet()) {
+//                    String fName = field.getKey();
+//                    String doc = docs.parameterMap().get(fName);
+//                    RecordFieldSymbol fieldSymbol = field.getValue();
+//                    fieldSymbol.getLocation().ifPresent(location -> {
+////                        Position p = new Position(location.lineRange().startLine().line(), location.lineRange().startLine().offset());
+//                        Position p = new Position(location.lineRange().startLine().line(), 4);
+//                        Range r = new Range(p, p);
+//                        textEdits.add(new TextEdit(r,  "# " + doc + "\n\t"));
+//                    });
+//                }
+//                return applyMultipleTextEdits(textEdits, textDocumentIdentifier, lsClient);
+//            }
+//        }
+
+
+    private Object createDocForTypeDef(TypeDefinitionNode typeDefNode, DocAttachmentInfo docAttachmentInfo, SemanticModel semanticModel, VersionedTextDocumentIdentifier textDocumentIdentifier, LanguageClient lsClient) {
+        return createDocs(typeDefNode, docAttachmentInfo, semanticModel, textDocumentIdentifier, lsClient);
+    }
+
+    private Object createDocs(NonTerminalNode node, DocAttachmentInfo docs, SemanticModel semanticModel, VersionedTextDocumentIdentifier textDocumentIdentifier, LanguageClient lsClient) {
+        DocAttachmentInfo mergedDocs = mergeDocs(node, docs, semanticModel);
+
+        Optional<Range> docsRange = DocumentationGenerator.getDocsRange(node);
         Range range;
+        boolean isUpdate = false;
         if (docsRange.isPresent()) {
             isUpdate = true;
             range = docsRange.get();
         } else {
-            range = new Range(docs.getDocStartPos(), docs.getDocStartPos());
+            range = new Range(mergedDocs.getDocStartPos(), mergedDocs.getDocStartPos());
         }
 
-        LanguageClient lsClient = ctx.getLanguageClient();
-        return applySingleTextEdit(docs.getDocumentationString(!isUpdate), range, textDocumentIdentifier, lsClient);
+        return applySingleTextEdit(mergedDocs.getDocumentationString(!isUpdate), range, textDocumentIdentifier, lsClient);
+    }
+    
+    private DocAttachmentInfo mergeDocs(NonTerminalNode node, DocAttachmentInfo docs, SemanticModel semanticModel) {
+        Optional<Symbol> documentableSymbol = getDocumentableSymbol(node, semanticModel);
+        if (documentableSymbol.isPresent()) {
+            Optional<Documentation> documentation = ((Documentable) documentableSymbol.get()).documentation();
+            if (documentation.isPresent()) {
+                return docs.mergeDocAttachment(documentation.get());
+            }
+        }
+        return docs;
     }
 }
